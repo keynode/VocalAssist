@@ -434,9 +434,9 @@ function rebuild(){
   noteEls.forEach(e=>e.remove()); breathEls.forEach(e=>e.remove()); guideEls.forEach(e=>e.remove());
   noteEls=[]; breathEls=[]; guideEls=[];
   const mns=MELODY.map(n=>n[2]);
-  let LOW=Math.min(...mns)-1, HIGH=Math.max(...mns)+1;
-  while(isBlack(LOW)) LOW--;
-  while(isBlack(HIGH)) HIGH++;
+  // клавиатура всегда покрывает полные октавы диапазона песни: от До снизу до Си сверху
+  let LOW=Math.floor(Math.min(...mns)/12)*12;
+  let HIGH=Math.floor(Math.max(...mns)/12)*12+11;
   kLOW=LOW; kHIGH=HIGH;
   whites=[]; for(let m=LOW;m<=HIGH;m++) if(!isBlack(m)) whites.push(m);
   wW=100/whites.length;
@@ -1267,8 +1267,8 @@ window.addEventListener('drop',e=>{
 
 /* ---- микрофон и детекция высоты ---- */
 const pc=$('pc');
-let micOn=false, micStream=null, analyser=null, micBuf=null, micRaf=0, pitchyDet=null;
-let pitchSamples=[], lastMf=[], curNoteG=null, hitN=0, hitT=0;
+let micOn=false, micStream=null, analyser=null, micBuf=null, micRaf=0;
+let pitchSamples=[], curNoteG=null, hitN=0, hitT=0;
 function sizeCanvas(){
   const d=window.devicePixelRatio||1;
   pc.width=Math.round(roll.clientWidth*d);
@@ -1490,7 +1490,10 @@ function drawPitch(){
 async function micToggle(){
   if(micOn){
     micOn=false; cancelAnimationFrame(micRaf);
-    if(micStream) micStream.getTracks().forEach(t=>t.stop());
+    if(capNode){try{capNode.port.onmessage=null;capNode.disconnect();}catch(e){} capNode=null;}
+    if(capMute){try{capMute.disconnect();}catch(e){} capMute=null;}
+    analyser=null;
+    if(micStream) micStream.getTracks().forEach(tr=>tr.stop());
     micStream=null;
     $('micBtn').classList.remove('on');
     $('sungBox').style.display='none'; $('hitBox').style.display='none';
@@ -1511,44 +1514,110 @@ async function micToggle(){
     return;
   }
   const src=ac.createMediaStreamSource(micStream);
-  analyser=ac.createAnalyser(); analyser.fftSize=2048;
-  src.connect(analyser);
-  micBuf=new Float32Array(analyser.fftSize);
-  pitchyDet=window.PitchDetector?window.PitchDetector.forFloat32Array(analyser.fftSize):null;
-  micOn=true; hitN=0; hitT=0; lastMf.length=0;
+  workletMode=false;
+  try{
+    if(ac.audioWorklet){
+      if(!capModuleP)
+        capModuleP=ac.audioWorklet.addModule(URL.createObjectURL(new Blob([CAP_CODE],{type:'text/javascript'})));
+      await capModuleP;
+      capNode=new AudioWorkletNode(ac,'vacap');
+      capMute=ac.createGain(); capMute.gain.value=0;
+      src.connect(capNode); capNode.connect(capMute); capMute.connect(ac.destination);
+      capNode.port.onmessage=e=>{if(micOn) onMicChunk(e.data);};
+      workletMode=true;
+    }
+  }catch(e){ capModuleP=null; capNode=null; }
+  if(!workletMode){ // совместимый режим: опрос анализатора
+    analyser=ac.createAnalyser(); analyser.fftSize=2048;
+    src.connect(analyser);
+    micBuf=new Float32Array(analyser.fftSize);
+  }
+  ringW=0; ringFilled=0; lastF=0; silentN=0; trk=null; pendMf=null; pendN=0;
+  micOn=true; hitN=0; hitT=0;
   $('micBtn').classList.add('on');
   $('sungBox').style.display=''; $('hitBox').style.display='';
-  toast(pitchyDet?t('micPitchy'):t('micBasic'));
+  toast(window.PitchDetector?t('micPitchy'):t('micBasic'));
   sizeCanvas(); micLoop();
 }
-function pitchOf(buf,sr){
-  if(!pitchyDet) return detectPitch(buf,sr);
-  let rms=0;
-  for(let i=0;i<buf.length;i++) rms+=buf[i]*buf[i];
-  if(Math.sqrt(rms/buf.length)<0.01) return 0;          // тишина
-  const [p,clarity]=pitchyDet.findPitch(buf,sr);
-  return (clarity>=0.9&&p>=70&&p<=1200)?p:0;            // MPM: берём только уверенные оценки
+/* захват через AudioWorklet (стабильные ~46 оценок/с), адаптивное окно, сглаживание с гистерезисом */
+const CAP_CODE=`class Cap extends AudioWorkletProcessor{
+constructor(){super();this.b=new Float32Array(1024);this.n=0;}
+process(inp){const c=inp[0]&&inp[0][0];if(c){let i=0;while(i<c.length){const k=Math.min(1024-this.n,c.length-i);this.b.set(c.subarray(i,i+k),this.n);this.n+=k;i+=k;if(this.n===1024){this.port.postMessage(this.b.slice(0));this.n=0;}}}return true;}}
+registerProcessor('vacap',Cap);`;
+let capModuleP=null, capNode=null, capMute=null, workletMode=false;
+const RING=8192;
+let ring=new Float32Array(RING), ringW=0, ringFilled=0, lastF=0, silentN=0;
+let trk=null, pendMf=null, pendN=0;
+const pitchyDets={};
+function pitchAny(buf){
+  const sr=ac.sampleRate;
+  if(window.PitchDetector){
+    const det=pitchyDets[buf.length]||(pitchyDets[buf.length]=window.PitchDetector.forFloat32Array(buf.length));
+    let rms=0;
+    for(let i=0;i<buf.length;i++) rms+=buf[i]*buf[i];
+    if(Math.sqrt(rms/buf.length)<0.01) return 0;
+    const [p,c]=det.findPitch(buf,sr);
+    return (c>=0.9&&p>=60&&p<=1200)?p:0;
+  }
+  return detectPitch(buf,sr);
+}
+// выброс на кадр-другой гасится, честный скачок (в т.ч. на октаву) подтверждается двумя кадрами
+function smoothPitch(mf){
+  if(trk==null){trk=mf; pendMf=null; pendN=0; return trk;}
+  if(Math.abs(mf-trk)<=1.0){trk+=0.6*(mf-trk); pendMf=null; pendN=0; return trk;}
+  if(pendMf!=null&&Math.abs(mf-pendMf)<=0.8){
+    if(++pendN>=2){trk=mf; pendMf=null; pendN=0; return trk;}
+  } else {pendMf=mf; pendN=1;}
+  return trk;
+}
+function onMicChunk(ch){
+  for(let i=0;i<ch.length;i++){ring[ringW]=ch[i]; ringW=(ringW+1)%RING;}
+  ringFilled=Math.min(RING,ringFilled+ch.length);
+  detectTick();
+}
+function lastWindow(n){
+  if(ringFilled<n) return null;
+  const out=new Float32Array(n), start=(ringW-n+RING)%RING;
+  if(start+n<=RING) out.set(ring.subarray(start,start+n));
+  else{const k=RING-start; out.set(ring.subarray(start)); out.set(ring.subarray(0,n-k),k);}
+  return out;
+}
+function detectTick(){
+  let n=(lastF>0&&lastF<160)?4096:2048; // низким нотам — длинное окно
+  let buf=lastWindow(n);
+  if(!buf&&n===4096) buf=lastWindow(n=2048);
+  if(!buf) return;
+  let f=pitchAny(buf);
+  if(!f&&n===2048){const b=lastWindow(4096); if(b){const f4=pitchAny(b); if(f4) f=f4;}}
+  if(f) lastF=f;
+  processPitch(f);
+}
+function processPitch(f){
+  if(!(f>0)){
+    if(++silentN>18){trk=null; pendMf=null; pendN=0;}
+    return;
+  }
+  silentN=0;
+  const mf=smoothPitch(midiOf(f));
+  let diff=null;
+  if(playing&&curNoteG){
+    diff=mf-curNoteG[2];
+    hitT++; if(Math.abs(diff)<=0.5) hitN++;
+    if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
+  }
+  pitchSamples.push({t:performance.now(), q:playing?nowQ():null, mf, diff});
+  if(pitchSamples.length>500) pitchSamples.splice(0,100);
+  const near=Math.round(mf), cents=Math.round((mf-near)*100);
+  $('sungNN').textContent=noteFull(near);
+  $('sungCents').textContent=(cents>0?'+':'')+cents+'¢';
+  $('sungBox').classList.toggle('off', diff!=null&&Math.abs(diff)>0.5);
 }
 function micLoop(){
   if(!micOn) return;
-  analyser.getFloatTimeDomainData(micBuf);
-  const f=pitchOf(micBuf,ac.sampleRate);
-  if(f>0){
-    lastMf.push(midiOf(f)); if(lastMf.length>3) lastMf.shift();
-    const mf=[...lastMf].sort((a,b)=>a-b)[Math.floor(lastMf.length/2)];
-    let diff=null;
-    if(playing&&curNoteG){
-      diff=mf-curNoteG[2];
-      hitT++; if(Math.abs(diff)<=0.5) hitN++;
-      if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
-    }
-    pitchSamples.push({t:performance.now(), q:playing?nowQ():null, mf, diff});
-    if(pitchSamples.length>500) pitchSamples.splice(0,100);
-    const near=Math.round(mf), cents=Math.round((mf-near)*100);
-    $('sungNN').textContent=noteFull(near);
-    $('sungCents').textContent=(cents>0?'+':'')+cents+'¢';
-    $('sungBox').classList.toggle('off', diff!=null&&Math.abs(diff)>0.5);
-  } else lastMf.length=0;
+  if(!workletMode&&analyser){ // совместимый режим без AudioWorklet
+    analyser.getFloatTimeDomainData(micBuf);
+    processPitch(pitchAny(micBuf));
+  }
   drawPitch();
   if(hView&&!playing) drawHView(startQ);
   micRaf=requestAnimationFrame(micLoop);
