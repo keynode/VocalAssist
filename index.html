@@ -876,10 +876,12 @@ function xPct(mf){
   return x1+(x2-x1)*f;
 }
 function drawPitch(){
+  const dd=window.devicePixelRatio||1;
+  if(pc.width!==Math.round(roll.clientWidth*dd)||pc.height!==Math.round(roll.clientHeight*dd)) sizeCanvas();
   const ctx=pc.getContext('2d');
   ctx.clearRect(0,0,pc.width,pc.height);
   if(!micOn) return;
-  const d=window.devicePixelRatio||1, W=pc.width, H=pc.height;
+  const d=dd, W=pc.width, H=pc.height;
   const lineY=H-NOWLINE*d, pxq=lineY/LOOK;
   const q=playing?nowQ():null;
   if(q!=null){
@@ -897,8 +899,23 @@ function drawPitch(){
   const last=pitchSamples[pitchSamples.length-1];
   if(last&&performance.now()-last.t<200){
     const good=last.diff!=null&&Math.abs(last.diff)<=0.5;
+    const x=xPct(last.mf)*W/100;
+    const rgb=good?'142,240,176':'121,207,255';
+    // вертикальный луч твоего тона — на всю высоту рулона, сквозь падающие ноты
+    const grad=ctx.createLinearGradient(0,0,0,lineY);
+    grad.addColorStop(0,'rgba('+rgb+',0.05)');
+    grad.addColorStop(0.6,'rgba('+rgb+',0.28)');
+    grad.addColorStop(1,'rgba('+rgb+',0.85)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(x-1.5*d,0,3*d,lineY);
+    // мягкое свечение луча у линии
+    const glow=ctx.createLinearGradient(0,lineY*0.55,0,lineY);
+    glow.addColorStop(0,'rgba('+rgb+',0)');
+    glow.addColorStop(1,'rgba('+rgb+',0.16)');
+    ctx.fillStyle=glow;
+    ctx.fillRect(x-7*d,lineY*0.55,14*d,lineY*0.45);
     ctx.beginPath();
-    ctx.arc(xPct(last.mf)*W/100, lineY, 5*d, 0, 7);
+    ctx.arc(x, lineY, 5*d, 0, 7);
     ctx.fillStyle=good?'#8ef0b0':'#79cfff';
     ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=12*d;
     ctx.fill(); ctx.shadowBlur=0;
