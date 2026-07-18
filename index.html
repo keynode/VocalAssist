@@ -363,7 +363,9 @@ function rebuild(){
   whites.forEach((m,i)=>{
     const k=document.createElement('div'); k.className='wkey';
     k.style.left=(i*wW)+'%'; k.style.width=wW+'%';
-    const lab=document.createElement('div'); lab.className='klabel'; lab.textContent=nameOf(m);
+    const lab=document.createElement('div'); lab.className='klabel';
+    lab.textContent=(m%12===0)?nameOf(m):NAMES[m%12]; // номер октавы — только на До (границе октав)
+    if(m%12===0) lab.style.fontWeight='700';
     k.appendChild(lab); keysEl.appendChild(k); keyEl[m]=k;
   });
   for(let m=LOW;m<=HIGH;m++){
@@ -1253,8 +1255,9 @@ function drawHView(q){
     const y=yOf(m);
     ctx.fillStyle=(m%12===0)?'#ffffff1e':'#ffffff0b';
     ctx.fillRect(0,y,W,1*d);
-    ctx.fillStyle='#8d92ab88';
-    ctx.fillText(rusOf(m)+(Math.floor(m/12)-1),6*d,y-2*d);
+    // номер октавы — только на До (границе октав), остальные линии — просто название
+    ctx.fillStyle=(m%12===0)?'#a8adc4cc':'#8d92ab77';
+    ctx.fillText((m%12===0)?rusOf(m)+(Math.floor(m/12)-1):rusOf(m),6*d,y-2*d);
   }
   // статичные отрезки нот текущей страницы
   for(let i=0;i<MELODY.length;i++){
