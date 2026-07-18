@@ -1,0 +1,2 @@
+swiftf0.onnx — SwiftF0 by Lars Nieradzik, MIT License (https://github.com/lars76/swift-f0)
+ort*.js/.mjs/.wasm — ONNX Runtime Web v1.22.0, (c) Microsoft Corporation, MIT License

@@ -314,6 +314,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
       </div>
       <div class="slider">🎤 <input id="vol" type="range" min="0" max="100" value="60"></div>
       <div class="slider">🎹 <input id="accVol" type="range" min="0" max="100" value="45"></div>
+      <button id="engBtn" title="Детектор высоты: SwiftF0 (нейросеть) / MPM (классика)">🧠 SwiftF0</button>
       <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
       <button id="langBtn" title="Language">🌐 RU</button>
     </div>
@@ -1805,7 +1806,12 @@ async function micToggle(){
   micOn=true; hitN=0; hitT=0;
   $('micBtn').classList.add('on');
   $('sungBox').style.display=''; $('hitBox').style.display='';
-  toast(window.PitchDetector?t('micPitchy'):t('micBasic'));
+  if(enginePref==='swift'){
+    loadSwiftF0();
+    toast(sfeState==='ready'?'Микрофон · SwiftF0':'Микрофон · SwiftF0 загружается, пока играет MPM');
+  } else {
+    toast(window.PitchDetector?t('micPitchy'):t('micBasic'));
+  }
   sizeCanvas(); micLoop();
 }
 /* захват через AudioWorklet (стабильные ~46 оценок/с), адаптивное окно, сглаживание с гистерезисом */
@@ -1852,6 +1858,17 @@ function lastWindow(n){
   return out;
 }
 function detectTick(){
+  // нейросетевой движок: окно ~170 мс, инференс асинхронно (пропускаем тик, если занят)
+  if(enginePref==='swift'&&sfeState==='ready'){
+    if(sfeBusy) return;
+    const nn=Math.min(ringFilled,8192);
+    if(nn<3072) return;
+    const b=lastWindow(nn);
+    if(!b) return;
+    sfeBusy=true;
+    sfeDetect(b).catch(()=>{}).finally(()=>{sfeBusy=false;});
+    return;
+  }
   let n=(lastF>0&&lastF<160)?4096:2048; // низким нотам — длинное окно
   let buf=lastWindow(n);
   if(!buf&&n===4096) buf=lastWindow(n=2048);
@@ -1892,6 +1909,72 @@ function micLoop(){
   micRaf=requestAnimationFrame(micLoop);
 }
 $('micBtn').onclick=micToggle;
+
+/* ---- SwiftF0: нейросетевой детектор высоты (ONNX Runtime WASM, всё локально в ml/) ---- */
+let sfeState='off'; // off | loading | ready | failed
+let sfeSession=null, sfeBusy=false, sfePeak=0.02;
+let enginePref=localStorage.getItem('vocalassist.engine')||'swift';
+function loadSwiftF0(){
+  if(sfeState!=='off') return;
+  sfeState='loading';
+  loadScript('ml/ort.wasm.min.js').then(async()=>{
+    ort.env.wasm.numThreads=1;      // GitHub Pages без COOP/COEP — только один поток
+    ort.env.wasm.wasmPaths=new URL('ml/',location.href).href; // абсолютный URL — иначе import() не резолвит
+    let made=false;
+    try{
+      ort.env.wasm.proxy=true;      // инференс в отдельном воркере, чтобы не дёргать отрисовку
+      sfeSession=await ort.InferenceSession.create('ml/swiftf0.onnx',{executionProviders:['wasm']});
+      made=true;
+    }catch(e){}
+    if(!made){
+      try{
+        ort.env.wasm.proxy=false;
+        sfeSession=await ort.InferenceSession.create('ml/swiftf0.onnx',{executionProviders:['wasm']});
+        made=true;
+      }catch(e){console.warn('SwiftF0 недоступен:',e&&e.message);}
+    }
+    if(!made){sfeState='failed';return;}
+    try{await sfeSession.run({input_audio:new ort.Tensor('float32',new Float32Array(1024),[1,1024])});}catch(e){}
+    sfeState='ready';
+    if(micOn) toast('SwiftF0 ✓');
+  }).catch(()=>{sfeState='failed';});
+}
+async function sfeDetect(buf){
+  const sr=ac.sampleRate, ratio=sr/16000, n=Math.floor(buf.length/ratio);
+  const len=Math.max(1024,n), x=new Float32Array(len);
+  let peak=0.0001;
+  for(let i=0;i<n;i++){ // линейный ресемплинг в 16 кГц, с нулями в начале при нехватке
+    const p=i*ratio, k=p|0, fr=p-k;
+    const v=buf[k]+(buf[Math.min(buf.length-1,k+1)]-buf[k])*fr;
+    x[len-n+i]=v;
+    const a=v<0?-v:v; if(a>peak) peak=a;
+  }
+  if(peak<0.004){processPitch(0);return;} // тишина — не тратим инференс
+  // медленный AGC вместо по-буферной нормализации (иначе confidence мерцает)
+  sfePeak=Math.max(peak, sfePeak*0.995, 0.02);
+  const g=1/sfePeak;
+  for(let i=0;i<len;i++) x[i]*=g;
+  const out=await sfeSession.run({input_audio:new ort.Tensor('float32',x,[1,len])});
+  const hz=out.pitch_hz.data, cf=out.confidence.data;
+  // медиана последних до 3 «голосовых» кадров с хвоста
+  const vals=[];
+  for(let i=hz.length-1;i>=0&&vals.length<3;i--){
+    if(cf[i]>0.9&&hz[i]>=46.875&&hz[i]<=2093.75) vals.push(hz[i]);
+    else if(vals.length) break;
+  }
+  let f=0;
+  if(vals.length){vals.sort((a,b)=>a-b); f=vals[vals.length>>1];}
+  processPitch(f);
+}
+function engineLabel(){return enginePref==='swift'?'🧠 SwiftF0':'〰 MPM';}
+$('engBtn').onclick=()=>{
+  enginePref=enginePref==='swift'?'mpm':'swift';
+  try{localStorage.setItem('vocalassist.engine',enginePref);}catch(e){}
+  $('engBtn').textContent=engineLabel();
+  if(enginePref==='swift'&&micOn) loadSwiftF0();
+  toast(engineLabel());
+};
+$('engBtn').textContent=engineLabel();
 
 /* ---- hotkeys ---- */
 window.addEventListener('keydown',e=>{
