@@ -957,6 +957,7 @@ $('songSearch').oninput=renderSongList;
 /* ---- песни из репозитория (папка songs/) ---- */
 const REPO_API='https://api.github.com/repos/keynode/VocalAssist/contents/songs';
 const RKEY='vocalassist.repo';
+const PARSE_V=2; // версия парсера: при улучшениях разборa кеш пере-парсится
 let repoSongs=[];
 function repoCache(){try{return JSON.parse(localStorage.getItem(RKEY))||{};}catch(e){return{};}}
 async function loadRepoList(){
@@ -966,7 +967,7 @@ async function loadRepoList(){
     if(!r.ok) throw 0;
     const files=(await r.json()).filter(f=>f.type==='file'&&/\.(mxl|musicxml|xml|midi?)$/i.test(f.name));
     repoSongs=files.map(f=>{
-      const c=cache[f.name], fresh=c&&c.sha===f.sha;
+      const c=cache[f.name], fresh=c&&c.sha===f.sha&&c.v===PARSE_V;
       return {id:'repo:'+f.name, name:f.name, file:f.download_url, sha:f.sha, size:f.size,
         title:fresh?c.title:f.name.replace(/\.(mxl|musicxml|xml|midi?)$/i,''),
         artist:fresh?c.artist:'', data:fresh?c.data:null};
@@ -995,7 +996,7 @@ async function openRepoSong(rs,auto){
     rs.title=s.title; rs.artist=s.artist;
     rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:s.tempo||100};
     const cache=repoCache();
-    cache[rs.name]={sha:rs.sha, file:rs.file, title:rs.title, artist:rs.artist, data:rs.data};
+    cache[rs.name]={sha:rs.sha, v:PARSE_V, file:rs.file, title:rs.title, artist:rs.artist, data:rs.data};
     try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
   }
   // автозагрузка не должна перекрывать песню, которую пользователь уже выбрал сам
