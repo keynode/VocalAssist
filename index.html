@@ -155,6 +155,10 @@ input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 /* контур без водопада — приглушение не нужно */
 .roll.nowf .note{opacity:1}
 .breath::after{content:"вдох";position:absolute;right:10px;top:-16px;font-size:11px;color:var(--air);letter-spacing:.4px}
+html[lang="en"] .breath::after{content:"breath"}
+.grp.step{padding:2px;gap:2px}
+.grp.step button{padding:5px 12px;font-size:15px;line-height:1}
+.grp.step .val{min-width:30px;text-align:center;color:var(--flame);font-weight:600}
 
 .nowbox{position:absolute;top:10px;left:10px;z-index:5;display:flex;align-items:center;gap:12px;
   background:#12162acc;border:1px solid var(--line);border-radius:12px;padding:8px 14px;backdrop-filter:blur(6px)}
@@ -227,11 +231,11 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
 <div class="wrap">
   <header>
     <div class="brand"><span class="fire">🔥</span>Vocal Assistant</div>
-    <div class="subtitle">вокальный тренажёр</div>
+    <div class="subtitle" data-i18n="subtitle">вокальный тренажёр</div>
     <div class="hdr-right">
       <span id="hitBox" style="display:none">🎯 <b id="hitPct">—</b></span>
       <span id="rangeInfo"></span>
-      <span>фраза <b id="phNum">1</b>/<span id="phTotal">?</span></span>
+      <span><span data-i18n="phrase">фраза</span> <b id="phNum">1</b>/<span id="phTotal">?</span></span>
       <span><b id="clock">0:00</b> / <span id="dur">0:00</span></span>
     </div>
   </header>
@@ -240,29 +244,37 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     <button id="play" class="primary">▶ Петь</button>
     <button id="restart" title="Сначала (R)">⟲</button>
     <div class="grp">
-      <button id="phPrev" title="Предыдущая фраза (←)">⟨</button>
-      <div class="num">фраза <b id="phNum2">1</b></div>
-      <button id="phNext" title="Следующая фраза (→)">⟩</button>
+      <button id="phPrev" title="←">⟨</button>
+      <div class="num"><span data-i18n="phrase">фраза</span> <b id="phNum2">1</b></div>
+      <button id="phNext" title="→">⟩</button>
     </div>
-    <button id="phLoop" class="tgl" title="Повторять фразу (L)">🔁 повтор</button>
-    <button id="legato" class="tgl on">легато</button>
-    <button id="micBtn" class="tgl" title="Показывать, какую ноту ты поёшь">🎙 микрофон</button>
-    <button id="wfBtn" class="tgl on" title="Падающие ноты (водопад)">⬇ водопад</button>
-    <button id="hvBtn" class="tgl" title="Контур: ноты слева направо по высоте, голос — линией поверх">📈 контур</button>
-    <button id="fileBtn" title="Открыть файл .mxl или .musicxml">📂 ноты</button>
+    <button id="phLoop" class="tgl" data-i18n="repeat">🔁 повтор</button>
+    <button id="legato" class="tgl on" data-i18n="legato">легато</button>
+    <button id="micBtn" class="tgl" data-i18n="mic">🎙 микрофон</button>
+    <button id="wfBtn" class="tgl on" data-i18n="wf">⬇ водопад</button>
+    <button id="hvBtn" class="tgl" data-i18n="hv">📈 контур</button>
+    <button id="fileBtn" data-i18n="files">📂 ноты</button>
     <input id="fileInp" type="file" accept=".mxl,.musicxml,.xml,.mid,.midi" style="display:none">
     <div class="spacer"></div>
     <div class="settings">
-      <div class="slider">Темп <input id="tempo" type="range" min="40" max="220" value="100"><span class="val" id="tempoVal">100</span></div>
-      <div class="slider">Тон <input id="transp" type="range" min="-7" max="7" value="0" step="1"><span class="val" id="transpVal">0</span></div>
+      <div class="slider"><span data-i18n="tempo">Темп</span> <input id="tempo" type="range" min="40" max="220" value="100"><span class="val" id="tempoVal">100</span></div>
+      <div class="slider"><span data-i18n="key">Тон</span>
+        <span class="grp step">
+          <button id="trDown" title="−1">−</button>
+          <span class="val" id="transpVal">0</span>
+          <button id="trUp" title="+1">+</button>
+        </span>
+      </div>
       <div class="slider">🎤 <input id="vol" type="range" min="0" max="100" value="60"></div>
       <div class="slider">🎹 <input id="accVol" type="range" min="0" max="100" value="45"></div>
+      <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
+      <button id="langBtn" title="Language">🌐 RU</button>
     </div>
   </div>
 
   <div class="shelf">
-    <button id="songsBtn">🎵 Песни <b id="songCount"></b> ⌄</button>
-    <span id="curSongLine">сейчас: —</span>
+    <button id="songsBtn">🎵 <span data-i18n="songsWord">Песни</span> <b id="songCount"></b> ⌄</button>
+    <span id="curSongLine">—</span>
   </div>
 
   <div class="tl" id="tl">
@@ -273,9 +285,9 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
 
   <div class="roll" id="roll">
     <div class="nowbox">
-      <div class="cur"><span id="curNN">—</span><small id="curSub">текущая нота</small></div>
-      <div class="nxt">дальше<br><b id="nextNN">—</b></div>
-      <div class="nxt sung" id="sungBox" style="display:none">пою<br><b id="sungNN">—</b> <span id="sungCents"></span></div>
+      <div class="cur"><span id="curNN">—</span><small id="curSub" data-i18n="curnote">текущая нота</small></div>
+      <div class="nxt"><span data-i18n="next">дальше</span><br><b id="nextNN">—</b></div>
+      <div class="nxt sung" id="sungBox" style="display:none"><span data-i18n="sing">пою</span><br><b id="sungNN">—</b> <span id="sungCents"></span></div>
     </div>
     <div class="nowline"></div>
     <canvas id="fx"></canvas>
@@ -286,26 +298,20 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
 
   <div class="keys" id="keys"></div>
 
-  <footer>
-    Счёт «4-3-2-1» перед стартом — вступай, когда загорится первая клавиша. Голубой пунктир — вдох.
-    «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. «Тон» транспонирует всё на полутон за шаг.
-    «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту,
-    зелёный = попал, 🎯 — процент попаданий.
-    &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала
-  </footer>
+  <footer id="footerText"></footer>
 </div>
 
 <div class="modal" id="songModal">
   <div class="sheet" role="dialog" aria-label="Библиотека песен">
     <div class="sh-head">
-      <span class="ttl">🎵 Песни</span>
+      <span class="ttl">🎵 <span data-i18n="songsWord">Песни</span></span>
       <input id="songSearch" type="search" placeholder="поиск по названию…" autocomplete="off">
-      <button class="sh-close" id="songClose" title="Закрыть (Esc)">✕</button>
+      <button class="sh-close" id="songClose" title="Esc">✕</button>
     </div>
     <div class="slist" id="slist"></div>
     <div class="sh-foot">
-      <button id="fileBtn2">📂 открыть файл…</button>
-      <span>файлы из папки <b>songs/</b> репозитория появляются здесь сами на всех устройствах</span>
+      <button id="fileBtn2" data-i18n="openfile">📂 открыть файл…</button>
+      <span data-i18n="footRepo">файлы из папки songs/ репозитория появляются здесь сами на всех устройствах</span>
     </div>
   </div>
 </div>
@@ -330,6 +336,74 @@ const nameOf=m=>NAMES[m%12]+(Math.floor(m/12)-1);
 const rusOf=m=>RUS[m%12];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---- язык интерфейса и названия нот ---- */
+const SOLF_RU=['До','До#','Ре','Ре#','Ми','Фа','Фа#','Соль','Соль#','Ля','Ля#','Си'];
+const SOLF_EN=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+let LANG=localStorage.getItem('vocalassist.lang')||'ru';
+let noteStyle=localStorage.getItem('vocalassist.notes')||'solfege'; // 'solfege' | 'letters'
+const T={
+ru:{
+  subtitle:'вокальный тренажёр', play:'▶ Петь', pause:'⏸ Пауза', phrase:'фраза',
+  repeat:'🔁 повтор', legato:'легато', mic:'🎙 микрофон', wf:'⬇ водопад', hv:'📈 контур',
+  files:'📂 ноты', songsWord:'Песни', now:'сейчас:', tempo:'Темп', key:'Тон', range:'диапазон:',
+  curnote:'текущая нота', next:'дальше', sing:'пою',
+  search:'поиск по названию…', openfile:'📂 открыть файл…',
+  footRepo:'файлы из папки songs/ репозитория появляются здесь сами на всех устройствах',
+  kind_builtin:'встроенная', kind_repo:'из репозитория · на всех устройствах', kind_local:'только в этом браузере',
+  notloaded:'ещё не загружалась — нажми, чтобы открыть', phrases:'фраз', noacc:'без аккомпанемента',
+  nothing:'Ничего не найдено', empty:'Пока нет песен — открой файл или положи его в songs/',
+  delTitle:'Удалить из этого браузера', repoBadge:'♪ репозиторий', kb:'КБ',
+  loading:'Загружаю', added:'Добавлено', updated:'Обновлено', deleted:'Удалено',
+  cantOpen:'Не удалось открыть', storageFull:'Не удалось сохранить: хранилище браузера переполнено — удали лишние песни',
+  micPitchy:'Микрофон включён · детектор Pitchy', micBasic:'Микрофон включён · встроенный детектор',
+  micDenied:'нет разрешения', micUnavail:'Микрофон недоступен', micNoHttps:'Микрофон работает только по HTTPS — открой страницу с https-адреса',
+  micUnsup:'Браузер не поддерживает микрофон',
+  footerHtml:'Счёт «4-3-2-1» перед стартом — вступай, когда загорится первая клавиша. Голубой пунктир — вдох. «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. Кнопки «Тон −/+» транспонируют всё на полутон за шаг. «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту, зелёный = попал, 🎯 — процент попаданий. &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала'
+},
+en:{
+  subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
+  repeat:'🔁 repeat', legato:'legato', mic:'🎙 microphone', wf:'⬇ waterfall', hv:'📈 contour',
+  files:'📂 files', songsWord:'Songs', now:'now:', tempo:'Tempo', key:'Key', range:'range:',
+  curnote:'current note', next:'next', sing:'singing',
+  search:'search by title…', openfile:'📂 open file…',
+  footRepo:'files from the repo folder songs/ appear here automatically on all devices',
+  kind_builtin:'built-in', kind_repo:'from repo · on all devices', kind_local:'only in this browser',
+  notloaded:'not loaded yet — tap to open', phrases:'phrases', noacc:'no accompaniment',
+  nothing:'Nothing found', empty:'No songs yet — open a file or put one into songs/',
+  delTitle:'Remove from this browser', repoBadge:'♪ repo', kb:'KB',
+  loading:'Loading', added:'Added', updated:'Updated', deleted:'Removed',
+  cantOpen:'Could not open', storageFull:'Could not save: browser storage is full — remove some songs',
+  micPitchy:'Microphone on · Pitchy detector', micBasic:'Microphone on · built-in detector',
+  micDenied:'permission denied', micUnavail:'Microphone unavailable', micNoHttps:'Microphone needs HTTPS — open the https:// address',
+  micUnsup:'This browser does not support microphone input',
+  footerHtml:'A “4-3-2-1” count-in plays before the start — come in when the first key lights up. Blue dashes mark breaths. Set “🎤” to zero for a backing track: accompaniment and highlights stay. “Key −/+” transposes everything by a semitone per step. “📂 files” opens .mxl, .musicxml and .mid (MIDI). With “🎙 microphone” sing in headphones — the beam shows your note, green = on pitch, 🎯 — hit percentage. &nbsp;·&nbsp; <kbd>Space</kbd> sing/pause · <kbd>←</kbd><kbd>→</kbd> phrases · <kbd>L</kbd> loop phrase · <kbd>R</kbd> restart'
+}};
+const t=k=>(T[LANG]&&T[LANG][k])||T.ru[k]||k;
+const octOf=m=>Math.floor(m/12)-1;
+function noteName(m){
+  const i=((m%12)+12)%12;
+  return (noteStyle==='letters'?NAMES:(LANG==='ru'?SOLF_RU:SOLF_EN))[i];
+}
+const noteFull=m=>noteName(m)+octOf(m);
+let lastSong={title:'—', artist:''};
+function updCurSongLine(){
+  $('curSongLine').innerHTML=esc(t('now'))+' <b>'+esc(lastSong.title)+'</b>'+(lastSong.artist?' · '+esc(lastSong.artist):'');
+}
+function applyLang(){
+  document.documentElement.setAttribute('lang',LANG);
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
+  $('songSearch').placeholder=t('search');
+  $('footerText').innerHTML=t('footerHtml');
+  $('play').textContent=playing?t('pause'):t('play');
+  $('noteBtn').textContent=noteStyle==='letters'?'C-D-E':(LANG==='ru'?'До-Ре-Ми':'Do-Re-Mi');
+  $('langBtn').textContent='🌐 '+LANG.toUpperCase();
+  updCurSongLine();
+  rebuild();
+  if(!playing){render(startQ); if(typeof hView!=='undefined'&&hView) drawHView(startQ);}
+  renderShelf();
+  updNoteBox(playing&&ac?nowQ():startQ);
+}
 
 let VOCAL=RAW, ACC=ACCRAW, PHR=PHRASES;   // текущая песня (по умолчанию — «Костёр»)
 let TRANSP=0, legatoOn=true;
@@ -370,7 +444,7 @@ function rebuild(){
     const k=document.createElement('div'); k.className='wkey';
     k.style.left=(i*wW)+'%'; k.style.width=wW+'%';
     const lab=document.createElement('div'); lab.className='klabel';
-    lab.textContent=(m%12===0)?nameOf(m):NAMES[m%12]; // номер октавы — только на До (границе октав)
+    lab.textContent=(m%12===0)?noteName(m)+octOf(m):noteName(m); // номер октавы — только на До
     if(m%12===0) lab.style.fontWeight='700';
     k.appendChild(lab); keysEl.appendChild(k); keyEl[m]=k;
   });
@@ -400,7 +474,7 @@ function rebuild(){
     e.className='note'+(isBlack(n[2])?' blk':'');
     e.style.width=(isBlack(n[2])?wW*0.6:wW*0.72)+'%';
     e.style.left=(xForMidi(n[2])-(isBlack(n[2])?wW*0.3:wW*0.36))+'%';
-    const lab=document.createElement('span'); lab.className='nlab'; lab.textContent=rusOf(n[2]);
+    const lab=document.createElement('span'); lab.className='nlab'; lab.textContent=noteName(n[2]);
     e.appendChild(lab);
     roll.appendChild(e); return e;
   });
@@ -408,7 +482,7 @@ function rebuild(){
     const e=document.createElement('div'); e.className='breath'; roll.appendChild(e); return e;
   });
   const lo=Math.min(...mns), hi=Math.max(...mns);
-  $('rangeInfo').textContent='диапазон: '+rusOf(lo)+' '+nameOf(lo)+' — '+rusOf(hi)+' '+nameOf(hi);
+  $('rangeInfo').textContent=t('range')+' '+noteFull(lo)+' — '+noteFull(hi);
 }
 function xForMidi(m){
   if(!isBlack(m)){const i=whites.indexOf(m);return (i+0.5)*wW;}
@@ -541,8 +615,8 @@ function setPos(q){
   if(hView) drawHView(q);
 }
 function reset(){cancelAnimationFrame(raf);playing=false;stopSound();countEl.style.display='none';
-  $('play').textContent='▶ Петь';setPos(0);
-  $('curNN').textContent='—';$('curSub').textContent='текущая нота';$('nextNN').textContent='—';}
+  $('play').textContent=t('play');setPos(0);
+  $('curNN').textContent='—';$('curSub').textContent=t('curnote');$('nextNN').textContent='—';}
 
 const LOOK=4;
 // пул горизонтальных линий долей/тактов (создаются один раз, до нот — чтобы быть под ними)
@@ -586,9 +660,9 @@ function updNoteBox(q){
     if(s<=q&&q<s+d){cur=MELODY[i];}
     if(s>q){next=MELODY[i];break;}
   }
-  $('curNN').textContent=cur?rusOf(cur[2]):'—';
-  $('curSub').textContent=cur?nameOf(cur[2]):'текущая нота';
-  $('nextNN').textContent=next?(rusOf(next[2])+' '+nameOf(next[2])):'—';
+  $('curNN').textContent=cur?noteName(cur[2]):'—';
+  $('curSub').textContent=cur?noteFull(cur[2]):t('curnote');
+  $('nextNN').textContent=next?noteFull(next[2]):'—';
   curNoteG=cur;
 }
 let startQ0Play=0, loopP=0;
@@ -621,7 +695,7 @@ function tick(){
 }
 function play(withCount=true){
   initAudio(); if(ac.state==='suspended')ac.resume();
-  playing=true; $('play').textContent='⏸ Пауза';
+  playing=true; $('play').textContent=t('pause');
   hitN=0; hitT=0; $('hitPct').textContent='—';
   const q0=startQ;
   startQ0Play=q0;
@@ -633,7 +707,7 @@ function play(withCount=true){
   raf=requestAnimationFrame(tick);
 }
 function pause(){startQ=Math.max(nowQ(),0);cancelAnimationFrame(raf);playing=false;stopSound();
-  countEl.style.display='none';$('play').textContent='▶ Петь';}
+  countEl.style.display='none';$('play').textContent=t('play');}
 function jumpTo(q){
   clearKeys(); stopSound(); startQ=q; startQ0Play=q;
   curIdx=idxFor(MELODY,q); accIdx=idxFor(ACC,q);
@@ -675,8 +749,10 @@ $('tempo').oninput=e=>{
   if(playing){startQ=Math.max(q,startQ0Play);startQ0Play=startQ;startAcTime=ac.currentTime;}
   else updHud(startQ);
 };
-$('transp').oninput=e=>{
-  TRANSP=+e.target.value;
+function setTransp(v){
+  v=Math.max(-7,Math.min(7,Math.round(v)));
+  if(v===TRANSP) return;
+  TRANSP=v;
   $('transpVal').textContent=(TRANSP>0?'+':'')+TRANSP;
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), transp:TRANSP}; saveLibDebounced();
   const q=playing?nowQ():startQ;
@@ -684,7 +760,9 @@ $('transp').oninput=e=>{
   if(playing){startQ=Math.max(q,0);startQ0Play=startQ;startAcTime=ac.currentTime;
     curIdx=idxFor(MELODY,startQ);accIdx=idxFor(ACC,startQ);}
   else setPos(startQ);
-};
+}
+$('trDown').onclick=()=>setTransp(TRANSP-1);
+$('trUp').onclick=()=>setTransp(TRANSP+1);
 $('vol').oninput=e=>{if(voxGain)voxGain.gain.value=e.target.value/100;};
 $('accVol').oninput=e=>{if(accGain)accGain.gain.value=e.target.value/100;};
 function phraseStep(dir){
@@ -722,7 +800,7 @@ let curSongId='builtin';
 const BUILTIN={id:'builtin', title:'Костёр', artist:'Машина Времени', tempo:100, raw:RAW, acc:ACCRAW, phr:PHRASES};
 function saveLib(){
   try{localStorage.setItem(LKEY,JSON.stringify(LIB));}
-  catch(e){toast('Не удалось сохранить: хранилище браузера переполнено — удали лишние песни');}
+  catch(e){toast(t('storageFull'));}
 }
 let saveT=0;
 function saveLibDebounced(){clearTimeout(saveT); saveT=setTimeout(saveLib,400);}
@@ -733,13 +811,13 @@ function allSongs(){
       fmt:'', data:BUILTIN, open:()=>applySong(BUILTIN)});
   repoSongs.forEach(rs=>items.push({kind:'repo', id:rs.id, title:rs.title, artist:rs.artist,
     fmt:/\.midi?$/i.test(rs.name)?'MIDI':'MusicXML', size:rs.size, data:rs.data,
-    open:()=>openRepoSong(rs).catch(err=>toast('Не удалось открыть: '+err.message))}));
+    open:()=>openRepoSong(rs).catch(err=>toast(t('cantOpen')+': '+err.message))}));
   LIB.songs.forEach(s=>items.push({kind:'local', id:s.id, title:s.title, artist:s.artist,
     fmt:s.fmt||'', data:s, open:()=>applySong(s),
     del:()=>{
       LIB.songs=LIB.songs.filter(x=>x.id!==s.id);
       delete LIB.prefs[s.id];
-      toast('Удалено: '+s.title);
+      toast(t('deleted')+': '+s.title);
       saveLib();
       if(curSongId===s.id) applySong(BUILTIN); else renderShelf();
     }}));
@@ -752,44 +830,44 @@ function statsLine(d){
   let total=0;
   for(const n of d.raw) total=Math.max(total,n[0]+n[1]);
   for(const n of (d.acc||[])) total=Math.max(total,n[0]+n[1]);
-  const t=d.tempo||100;
-  return fmt(total/(t/60))+' · фраз: '+(d.phr?d.phr.length:'—')+' · '+
-    rusOf(lo)+' '+nameOf(lo)+' — '+rusOf(hi)+' '+nameOf(hi)+' · ♩'+t+
-    ((d.acc&&d.acc.length)?'':' · без аккомпанемента');
+  const bp=d.tempo||100;
+  return fmt(total/(bp/60))+' · '+t('phrases')+': '+(d.phr?d.phr.length:'—')+' · '+
+    noteFull(lo)+' — '+noteFull(hi)+' · ♩'+bp+
+    ((d.acc&&d.acc.length)?'':' · '+t('noacc'));
 }
-const KIND_LABEL={builtin:'встроенная', repo:'из репозитория · на всех устройствах', local:'только в этом браузере'};
+const kindLabel=k=>t('kind_'+k);
 function renderSongList(){
   const filter=($('songSearch').value||'').trim().toLowerCase();
   const list=$('slist'); list.innerHTML='';
   let shown=0;
   for(const it of allSongs()){
-    if(filter&&!(it.title+' '+(it.artist||'')+' '+(it.fmt||'')+' '+KIND_LABEL[it.kind]).toLowerCase().includes(filter)) continue;
+    if(filter&&!(it.title+' '+(it.artist||'')+' '+(it.fmt||'')+' '+kindLabel(it.kind)).toLowerCase().includes(filter)) continue;
     shown++;
     const c=document.createElement('div');
     c.className='scard'+(it.id===curSongId?' active':'');
     c.setAttribute('role','button'); c.tabIndex=0;
     const main=document.createElement('div'); main.className='s-main';
-    const t=document.createElement('div'); t.className='s-title';
-    t.append(it.title);
+    const tt=document.createElement('div'); tt.className='s-title';
+    tt.append(it.title);
     if(it.fmt){
       const b=document.createElement('span');
       b.className='badge '+(it.fmt==='MIDI'?'midi':'xml'); b.textContent=it.fmt;
-      t.appendChild(b);
+      tt.appendChild(b);
     }
     if(it.kind==='repo'){
-      const b=document.createElement('span'); b.className='badge repo'; b.textContent='♪ репозиторий';
-      t.appendChild(b);
+      const b=document.createElement('span'); b.className='badge repo'; b.textContent=t('repoBadge');
+      tt.appendChild(b);
     }
-    if(it.id===curSongId) t.append(' ▶');
+    if(it.id===curSongId) tt.append(' ▶');
     const sub=document.createElement('div'); sub.className='s-sub';
-    sub.textContent=(it.artist?it.artist+' · ':'')+KIND_LABEL[it.kind];
+    sub.textContent=(it.artist?it.artist+' · ':'')+kindLabel(it.kind);
     const meta=document.createElement('div'); meta.className='s-meta';
     meta.textContent=statsLine(it.data)||
-      ('ещё не загружалась — нажми, чтобы открыть'+(it.size?' · ≈'+Math.max(1,Math.round(it.size/1024))+' КБ':''));
-    main.append(t,sub,meta); c.appendChild(main);
+      (t('notloaded')+(it.size?' · ≈'+Math.max(1,Math.round(it.size/1024))+' '+t('kb'):''));
+    main.append(tt,sub,meta); c.appendChild(main);
     if(it.del){
       const d=document.createElement('button'); d.className='s-del'; d.textContent='✕';
-      d.title='Удалить из этого браузера';
+      d.title=t('delTitle');
       d.onclick=e=>{e.stopPropagation(); it.del(); renderSongList();};
       c.appendChild(d);
     }
@@ -799,7 +877,7 @@ function renderSongList(){
   }
   if(!shown){
     const e=document.createElement('div'); e.className='s-sub'; e.style.padding='14px';
-    e.textContent=filter?'Ничего не найдено':'Пока нет песен — открой файл или положи его в songs/';
+    e.textContent=filter?t('nothing'):t('empty');
     list.appendChild(e);
   }
 }
@@ -848,7 +926,7 @@ async function loadRepoList(){
 }
 async function openRepoSong(rs,auto){
   if(!rs.data){
-    if(!auto) toast('Загружаю «'+rs.title+'»…');
+    if(!auto) toast(t('loading')+' «'+rs.title+'»…');
     const resp=await fetch(rs.file);
     if(!resp.ok) throw Error('нет сети или файл недоступен');
     const s=await parseSongData(rs.name, await resp.arrayBuffer());
@@ -1148,9 +1226,10 @@ function applySong(s){
   bpm=Math.round(Math.min(220,Math.max(40, pref.bpm||s.tempo||100)));
   $('tempo').value=bpm; $('tempoVal').textContent=bpm;
   TRANSP=pref.transp||0;
-  $('transp').value=TRANSP; $('transpVal').textContent=(TRANSP>0?'+':'')+TRANSP;
+  $('transpVal').textContent=(TRANSP>0?'+':'')+TRANSP;
   $('phTotal').textContent=PHR.length;
-  $('curSongLine').innerHTML='сейчас: <b>'+esc(s.title)+'</b>'+(s.artist?' · '+esc(s.artist):'');
+  lastSong={title:s.title, artist:s.artist||''};
+  updCurSongLine();
   MELODY=buildMelody();
   loopP=0; buildTicks(); rebuild(); reset(); updDur();
   LIB.last=curSongId; saveLibDebounced();
@@ -1170,20 +1249,20 @@ async function loadFile(file){
   else LIB.songs.push(entry);
   saveLib();
   applySong(entry);
-  toast((existing?'Обновлено: ':'Добавлено: ')+title+' · фраз: '+entry.phr.length+(entry.acc.length?'':' · без аккомпанемента'));
+  toast((existing?t('updated'):t('added'))+': '+title+' · '+t('phrases')+': '+entry.phr.length+(entry.acc.length?'':' · '+t('noacc')));
 }
 $('fileBtn').onclick=()=>$('fileInp').click();
 $('fileBtn2').onclick=()=>{closeSongModal(); $('fileInp').click();};
 $('fileInp').onchange=e=>{
   const f=e.target.files[0];
-  if(f) loadFile(f).catch(err=>toast('Не удалось открыть: '+err.message));
+  if(f) loadFile(f).catch(err=>toast(t('cantOpen')+': '+err.message));
   e.target.value='';
 };
 window.addEventListener('dragover',e=>e.preventDefault());
 window.addEventListener('drop',e=>{
   e.preventDefault();
   const f=e.dataTransfer.files[0];
-  if(f) loadFile(f).catch(err=>toast('Не удалось открыть: '+err.message));
+  if(f) loadFile(f).catch(err=>toast(t('cantOpen')+': '+err.message));
 });
 
 /* ---- микрофон и детекция высоты ---- */
@@ -1263,7 +1342,7 @@ function drawHView(q){
     ctx.fillRect(0,y,W,1*d);
     // номер октавы — только на До (границе октав), остальные линии — просто название
     ctx.fillStyle=(m%12===0)?'#a8adc4cc':'#8d92ab77';
-    ctx.fillText((m%12===0)?rusOf(m)+(Math.floor(m/12)-1):rusOf(m),6*d,y-2*d);
+    ctx.fillText((m%12===0)?noteName(m)+octOf(m):noteName(m),6*d,y-2*d);
   }
   // статичные отрезки нот текущей страницы
   for(let i=0;i<MELODY.length;i++){
@@ -1419,7 +1498,7 @@ async function micToggle(){
     return;
   }
   if(!navigator.mediaDevices?.getUserMedia){
-    toast(window.isSecureContext?'Браузер не поддерживает микрофон':'Микрофон работает только по HTTPS — открой страницу с https-адреса');
+    toast(window.isSecureContext?t('micUnsup'):t('micNoHttps'));
     return;
   }
   try{
@@ -1428,7 +1507,7 @@ async function micToggle(){
       audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:false}
     });
   }catch(err){
-    toast('Микрофон недоступен: '+(err.name==='NotAllowedError'?'нет разрешения':err.message));
+    toast(t('micUnavail')+': '+(err.name==='NotAllowedError'?t('micDenied'):err.message));
     return;
   }
   const src=ac.createMediaStreamSource(micStream);
@@ -1439,7 +1518,7 @@ async function micToggle(){
   micOn=true; hitN=0; hitT=0; lastMf.length=0;
   $('micBtn').classList.add('on');
   $('sungBox').style.display=''; $('hitBox').style.display='';
-  toast(pitchyDet?'Микрофон включён · детектор Pitchy':'Микрофон включён · встроенный детектор');
+  toast(pitchyDet?t('micPitchy'):t('micBasic'));
   sizeCanvas(); micLoop();
 }
 function pitchOf(buf,sr){
@@ -1466,7 +1545,7 @@ function micLoop(){
     pitchSamples.push({t:performance.now(), q:playing?nowQ():null, mf, diff});
     if(pitchSamples.length>500) pitchSamples.splice(0,100);
     const near=Math.round(mf), cents=Math.round((mf-near)*100);
-    $('sungNN').textContent=rusOf(near)+' '+nameOf(near);
+    $('sungNN').textContent=noteFull(near);
     $('sungCents').textContent=(cents>0?'+':'')+cents+'¢';
     $('sungBox').classList.toggle('off', diff!=null&&Math.abs(diff)>0.5);
   } else lastMf.length=0;
@@ -1496,6 +1575,9 @@ loadRepoList();
 preloadSfScripts(); // сэмплы инструментов качаются в фоне, к первому нажатию «Петь» обычно уже готовы
 if(localStorage.getItem('vocalassist.hview')==='1') setHView(true);
 if(localStorage.getItem('vocalassist.wfview')==='0') setWfView(false);
+$('langBtn').onclick=()=>{LANG=(LANG==='ru')?'en':'ru';try{localStorage.setItem('vocalassist.lang',LANG);}catch(e){}applyLang();};
+$('noteBtn').onclick=()=>{noteStyle=(noteStyle==='letters')?'solfege':'letters';try{localStorage.setItem('vocalassist.notes',noteStyle);}catch(e){}applyLang();};
+applyLang();
 window.addEventListener('resize',()=>{sizeCanvas();if(!playing){render(startQ);drawPitch();if(hView)drawHView(startQ);}});
 </script>
 </body>
