@@ -228,6 +228,10 @@ html[lang="en"] .breath::after{content:"breath"}
 #lyrBall{position:absolute;width:9px;height:9px;border-radius:50%;display:none;margin-left:-4.5px;
   background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--ember));
   box-shadow:0 0 10px var(--ember),0 0 20px #ff9d5266}
+#lyrics .hold{display:inline-block;height:4px;margin:0 3px 3px 3px;border-radius:2px;
+  background:#5d67ab4d;position:relative;overflow:hidden;vertical-align:baseline}
+#lyrics .hold i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:2px;
+  background:linear-gradient(90deg,var(--flame),var(--ember));box-shadow:0 0 6px #ff9d5288}
 .badge.lyrb{color:#e0b7ff;border-color:#77518c}
 
 footer{color:var(--muted);font-size:12px;line-height:1.6}
@@ -856,7 +860,7 @@ $('legato').onclick=e=>{
 
 /* ---- караоке-текст: куплет с подсветкой текущего слога ---- */
 let LYR=[], lyrOn=localStorage.getItem('vocalassist.lyrics')!=='0';
-let sylPara=[], sylEnd=[], lyrParas=[], lyrIdx=0, lyrParaShown=-1, lyrSpans=[], lyrPrevLine=null;
+let sylPara=[], sylEnd=[], sylHold=[], lyrParas=[], lyrIdx=0, lyrParaShown=-1, lyrSpans=[], lyrPrevLine=null, lyrHoldMap={};
 function buildLyrics(){
   lyrParas=[]; sylPara=[]; sylEnd=[]; lyrIdx=0; lyrParaShown=-1; lyrSpans=[]; lyrPrevLine=null;
   const box=$('lyrics');
@@ -871,13 +875,25 @@ function buildLyrics(){
     if(!line||syl[2]>=1){line=[]; para.lines.push(line);}
     line.push(i);
     sylPara[i]=lyrParas.length-1;
-    sylEnd[i]=(i+1<LYR.length?Math.min(LYR[i+1][0],LYR[i][0]+2):LYR[i][0]+2);
   });
+  // сколько тянется каждый слог: длина непрерывной цепочки нот мелодии от его начала
+  sylHold=[];
+  let vi=0;
+  for(let i=0;i<LYR.length;i++){
+    const q0=LYR[i][0], qNext=(i+1<LYR.length)?LYR[i+1][0]:Infinity;
+    while(vi<MELODY.length&&MELODY[vi][0]+MELODY[vi][1]<=q0+0.001) vi++;
+    let j=vi, end=q0;
+    while(j<MELODY.length&&MELODY[j][0]<qNext-0.05&&MELODY[j][0]<=end+0.3){
+      end=Math.max(end,MELODY[j][0]+MELODY[j][1]); j++;
+    }
+    sylHold[i]=Math.max(0,Math.min(end,qNext)-q0);
+    sylEnd[i]=Math.min(qNext, q0+(sylHold[i]>0.4?sylHold[i]:2));
+  }
 }
 let lyrSpanMap={}, lyrBallEl=null, lyrPrevFill=null;
 function renderLyrPara(p){
   const box=$('lyrics');
-  box.innerHTML=''; lyrSpans=[]; lyrSpanMap={}; lyrPrevFill=null;
+  box.innerHTML=''; lyrSpans=[]; lyrSpanMap={}; lyrPrevFill=null; lyrHoldMap={};
   const para=lyrParas[p];
   if(!para) return;
   for(const line of para.lines){
@@ -885,6 +901,13 @@ function renderLyrPara(p){
     for(const i of line){
       const sp=document.createElement('span'); sp.textContent=LYR[i][1]; sp._i=i;
       ld.appendChild(sp); lyrSpans.push(sp); lyrSpanMap[i]=sp;
+      // хвост тянущегося слога: длина пропорциональна длительности
+      if(sylHold[i]>=1.1){
+        const h=document.createElement('span'); h.className='hold';
+        h.style.width=Math.min(140,Math.round((sylHold[i]-0.6)*22))+'px';
+        const f=document.createElement('i'); h.appendChild(f);
+        ld.appendChild(h); lyrHoldMap[i]=f;
+      }
     }
     box.appendChild(ld);
   }
@@ -914,6 +937,13 @@ function updateLyrics(q){
     sp.classList.toggle('done',i<lyrIdx&&!isCur);
     sp.classList.toggle('soon',i===lyrIdx&&LYR[i][0]-q<=1.5);
     if(isCur) curEl=sp;
+    const hf=lyrHoldMap[i];
+    if(hf){ // заполнение хвоста: сколько уже протянуто
+      let pct=0;
+      if(i===cur) pct=Math.max(0,Math.min(1,(q-LYR[i][0])/Math.max(0.001,sylHold[i])));
+      else if(i<lyrIdx) pct=1;
+      hf.style.width=(pct*100).toFixed(1)+'%';
+    }
   }
   // держим текущую строку в видимой зоне
   if(curEl){
