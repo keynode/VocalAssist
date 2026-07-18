@@ -684,20 +684,22 @@ async function loadRepoList(){
   renderShelf();
   // если в прошлый раз была открыта песня из репозитория — вернёмся к ней
   const last=repoSongs.find(s=>s.id===LAST0);
-  if(last&&curSongId==='builtin'&&!playing) openRepoSong(last).catch(()=>{});
+  if(last&&curSongId==='builtin'&&!playing) openRepoSong(last,true).catch(()=>{});
 }
-async function openRepoSong(rs){
+async function openRepoSong(rs,auto){
   if(!rs.data){
-    toast('Загружаю «'+rs.title+'»…');
+    if(!auto) toast('Загружаю «'+rs.title+'»…');
     const resp=await fetch(rs.file);
     if(!resp.ok) throw Error('нет сети или файл недоступен');
     const s=await parseSongData(rs.name, await resp.arrayBuffer());
     rs.title=s.title; rs.artist=s.artist;
     rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:s.tempo||100};
     const cache=repoCache();
-    cache[rs.name]={sha:rs.sha, file:rs.file, title, artist, data:rs.data};
+    cache[rs.name]={sha:rs.sha, file:rs.file, title:rs.title, artist:rs.artist, data:rs.data};
     try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
   }
+  // автозагрузка не должна перекрывать песню, которую пользователь уже выбрал сам
+  if(auto&&(curSongId!=='builtin'||playing)) return;
   applySong({id:rs.id, title:rs.title, artist:rs.artist, tempo:rs.data.tempo,
     raw:rs.data.raw, acc:rs.data.acc, phr:rs.data.phr});
 }
