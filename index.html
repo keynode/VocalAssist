@@ -215,13 +215,19 @@ html[lang="en"] .breath::after{content:"breath"}
 .toast.show{opacity:1;transform:translateX(-50%)}
 
 #lyrics{position:absolute;left:8px;right:8px;bottom:64px;z-index:5;pointer-events:none;
-  text-align:center;font-size:15px;line-height:1.55;color:#a9afc7;
-  background:#0d1020c0;border-radius:12px;padding:8px 14px;backdrop-filter:blur(5px);
+  text-align:center;font-size:15px;line-height:1.6;color:#b6bcd4;
+  background:#0d102047;border-radius:12px;padding:10px 14px;
+  text-shadow:0 1px 2px #000e,0 0 6px #000b;
   max-height:7.6em;overflow:hidden}
 #lyrics .lline{display:block}
+#lyrics .lline span{background-image:linear-gradient(90deg,#ff9d523d,#ff9d523d);
+  background-repeat:no-repeat;background-size:0 100%;border-radius:4px}
 #lyrics .done{color:#ff9d52}
-#lyrics .cur{color:#ffd166;font-weight:700;text-shadow:0 0 12px #ff9d52aa}
-#lyrics .soon{color:#f0ede3;background:#ff9d5226;border-radius:4px}
+#lyrics .cur{color:#ffd166;font-weight:700;text-shadow:0 0 12px #ff9d52cc,0 1px 2px #000}
+#lyrics .soon{color:#f0ede3}
+#lyrBall{position:absolute;width:9px;height:9px;border-radius:50%;display:none;margin-left:-4.5px;
+  background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--ember));
+  box-shadow:0 0 10px var(--ember),0 0 20px #ff9d5266}
 .badge.lyrb{color:#e0b7ff;border-color:#77518c}
 
 footer{color:var(--muted);font-size:12px;line-height:1.6}
@@ -868,19 +874,22 @@ function buildLyrics(){
     sylEnd[i]=(i+1<LYR.length?Math.min(LYR[i+1][0],LYR[i][0]+2):LYR[i][0]+2);
   });
 }
+let lyrSpanMap={}, lyrBallEl=null, lyrPrevFill=null;
 function renderLyrPara(p){
   const box=$('lyrics');
-  box.innerHTML=''; lyrSpans=[];
+  box.innerHTML=''; lyrSpans=[]; lyrSpanMap={}; lyrPrevFill=null;
   const para=lyrParas[p];
   if(!para) return;
   for(const line of para.lines){
     const ld=document.createElement('span'); ld.className='lline';
     for(const i of line){
       const sp=document.createElement('span'); sp.textContent=LYR[i][1]; sp._i=i;
-      ld.appendChild(sp); lyrSpans.push(sp);
+      ld.appendChild(sp); lyrSpans.push(sp); lyrSpanMap[i]=sp;
     }
     box.appendChild(ld);
   }
+  if(!lyrBallEl){lyrBallEl=document.createElement('div'); lyrBallEl.id='lyrBall';}
+  box.appendChild(lyrBallEl); // переживает перерисовку куплета
   box.scrollTop=0; lyrPrevLine=null;
 }
 function seekLyrics(q){
@@ -914,6 +923,33 @@ function updateLyrics(q){
       const box=$('lyrics');
       box.scrollTop=Math.max(0,ln.offsetTop-box.clientHeight/2+ln.offsetHeight/2);
     }
+  }
+  // заливка-прогресс на следующем слоге: заполняется за последние 2 доли
+  const nxt=lyrIdx<LYR.length?lyrSpanMap[lyrIdx]:null;
+  if(lyrPrevFill&&lyrPrevFill!==nxt) lyrPrevFill.style.backgroundSize='';
+  if(nxt){
+    const pct=Math.max(0,Math.min(1,(q-(LYR[lyrIdx][0]-2))/2));
+    nxt.style.backgroundSize=(pct*100).toFixed(1)+'% 100%';
+    lyrPrevFill=nxt;
+  }
+  // «прыгающий шарик»: летит от текущего слога к следующему, приземляется в момент вступления
+  if(lyrBallEl){
+    let show=false;
+    if(nxt&&LYR[lyrIdx][0]-q<=4){
+      const xb=nxt.offsetLeft+nxt.offsetWidth/2, yb=nxt.offsetTop;
+      let xa=xb-46, ya=yb, qa=LYR[lyrIdx][0]-2;
+      const a=lyrIdx-1;
+      if(a>=0&&lyrSpanMap[a]){
+        const sa=lyrSpanMap[a];
+        xa=sa.offsetLeft+sa.offsetWidth/2; ya=sa.offsetTop; qa=LYR[a][0];
+      }
+      const tt=Math.max(0,Math.min(1,(q-qa)/Math.max(0.001,LYR[lyrIdx][0]-qa)));
+      const x=xa+(xb-xa)*tt, y=ya+(yb-ya)*tt - 13 - 7*Math.sin(Math.PI*tt);
+      lyrBallEl.style.left=x+'px';
+      lyrBallEl.style.top=y+'px';
+      show=true;
+    }
+    lyrBallEl.style.display=show?'block':'none';
   }
 }
 $('lyrBtn').onclick=()=>{
