@@ -214,6 +214,16 @@ html[lang="en"] .breath::after{content:"breath"}
   border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90vw}
 .toast.show{opacity:1;transform:translateX(-50%)}
 
+#lyrics{position:absolute;left:8px;right:8px;bottom:64px;z-index:5;pointer-events:none;
+  text-align:center;font-size:15px;line-height:1.55;color:#a9afc7;
+  background:#0d1020c0;border-radius:12px;padding:8px 14px;backdrop-filter:blur(5px);
+  max-height:7.6em;overflow:hidden}
+#lyrics .lline{display:block}
+#lyrics .done{color:#ff9d52}
+#lyrics .cur{color:#ffd166;font-weight:700;text-shadow:0 0 12px #ff9d52aa}
+#lyrics .soon{color:#f0ede3;background:#ff9d5226;border-radius:4px}
+.badge.lyrb{color:#e0b7ff;border-color:#77518c}
+
 footer{color:var(--muted);font-size:12px;line-height:1.6}
 footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11px}
 
@@ -235,6 +245,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
   .nowbox{padding:5px 9px;gap:8px}
   .nowbox .cur{font-size:18px}
   .nowbox .cur small{font-size:10px}
+  #lyrics{font-size:13px;bottom:60px;max-height:6.2em;padding:6px 10px}
   .countin{font-size:64px}
   input[type=range]{width:90px}
   .shelf{font-size:12px}
@@ -270,6 +281,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     <button id="legato" class="tgl on" data-i18n="legato">легато</button>
     <button id="wfBtn" class="tgl on" data-i18n="wf">⬇ водопад</button>
     <button id="hvBtn" class="tgl" data-i18n="hv">📈 контур</button>
+    <button id="lyrBtn" class="tgl on" data-i18n="lyr" style="display:none">📝 текст</button>
     <button id="fileBtn" data-i18n="files">📂 ноты</button>
     <div class="spacer"></div>
     <div class="settings">
@@ -317,6 +329,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     <canvas id="fx"></canvas>
     <canvas id="pc"></canvas>
     <canvas id="hv"></canvas>
+    <div id="lyrics" style="display:none"></div>
     <div class="countin" id="countin" style="display:none">4</div>
   </div>
 
@@ -370,7 +383,7 @@ const T={
 ru:{
   subtitle:'вокальный тренажёр', play:'▶ Петь', pause:'⏸ Пауза', phrase:'фраза',
   repeat:'🔁 повтор', legato:'легато', mic:'🎙 микрофон', wf:'⬇ водопад', hv:'📈 контур',
-  files:'📂 ноты', songsWord:'Песни', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
+  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
   curnote:'текущая нота', next:'дальше', sing:'пою',
   search:'поиск по названию…', openfile:'📂 открыть файл…',
   footRepo:'файлы из папки songs/ репозитория появляются здесь сами на всех устройствах',
@@ -388,7 +401,7 @@ ru:{
 en:{
   subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
   repeat:'🔁 repeat', legato:'legato', mic:'🎙 microphone', wf:'⬇ waterfall', hv:'📈 contour',
-  files:'📂 files', songsWord:'Songs', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
+  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
   curnote:'current note', next:'next', sing:'singing',
   search:'search by title…', openfile:'📂 open file…',
   footRepo:'files from the repo folder songs/ appear here automatically on all devices',
@@ -650,6 +663,7 @@ function setPos(q){
   if(ac){startAcTime=ac.currentTime;}
   updHud(q); render(q); updNoteBox(q);
   if(hView) drawHView(q);
+  if(typeof seekLyrics==='function'&&LYR) seekLyrics(q);
 }
 function reset(){cancelAnimationFrame(raf);playing=false;stopSound();countEl.style.display='none';
   $('play').textContent=t('play');setPos(0);
@@ -725,7 +739,7 @@ function tick(){
   for(const [m,rel] of active){if(q>=rel){if(keyEl[m])keyEl[m].classList.remove('on');active.delete(m);}}
   render(q); drawFx(performance.now());
   if(hView) drawHView(q);
-  updNoteBox(q); updHud(q);
+  updNoteBox(q); updHud(q); updateLyrics(q);
   if(loopPhrase&&q>=phraseEnd(loopP)-0.02){jumpTo(PHR[loopP]);raf=requestAnimationFrame(tick);return;}
   if(q>totalQ+1){reset();return;}
   raf=requestAnimationFrame(tick);
@@ -750,7 +764,7 @@ function jumpTo(q){
   curIdx=idxFor(MELODY,q); accIdx=idxFor(ACC,q);
   pitchSamples.length=0;
   if(ac)startAcTime=ac.currentTime;
-  if(!playing) setPos(q); else updHud(q);
+  if(!playing) setPos(q); else {updHud(q); seekLyrics(q);}
 }
 
 /* ---- timeline ---- */
@@ -834,6 +848,83 @@ $('legato').onclick=e=>{
   if(playing){curIdx=idxFor(MELODY,q);} else setPos(startQ);
 };
 
+/* ---- караоке-текст: куплет с подсветкой текущего слога ---- */
+let LYR=[], lyrOn=localStorage.getItem('vocalassist.lyrics')!=='0';
+let sylPara=[], sylEnd=[], lyrParas=[], lyrIdx=0, lyrParaShown=-1, lyrSpans=[], lyrPrevLine=null;
+function buildLyrics(){
+  lyrParas=[]; sylPara=[]; sylEnd=[]; lyrIdx=0; lyrParaShown=-1; lyrSpans=[]; lyrPrevLine=null;
+  const box=$('lyrics');
+  box.innerHTML='';
+  const has=LYR.length>0;
+  $('lyrBtn').style.display=has?'':'none';
+  box.style.display=(has&&lyrOn)?'':'none';
+  if(!has) return;
+  let para=null, line=null;
+  LYR.forEach((syl,i)=>{
+    if(!para||syl[2]===2){para={lines:[]}; lyrParas.push(para); line=null;}
+    if(!line||syl[2]>=1){line=[]; para.lines.push(line);}
+    line.push(i);
+    sylPara[i]=lyrParas.length-1;
+    sylEnd[i]=(i+1<LYR.length?Math.min(LYR[i+1][0],LYR[i][0]+2):LYR[i][0]+2);
+  });
+}
+function renderLyrPara(p){
+  const box=$('lyrics');
+  box.innerHTML=''; lyrSpans=[];
+  const para=lyrParas[p];
+  if(!para) return;
+  for(const line of para.lines){
+    const ld=document.createElement('span'); ld.className='lline';
+    for(const i of line){
+      const sp=document.createElement('span'); sp.textContent=LYR[i][1]; sp._i=i;
+      ld.appendChild(sp); lyrSpans.push(sp);
+    }
+    box.appendChild(ld);
+  }
+  box.scrollTop=0; lyrPrevLine=null;
+}
+function seekLyrics(q){
+  lyrIdx=0;
+  while(lyrIdx<LYR.length&&LYR[lyrIdx][0]<=q) lyrIdx++;
+  lyrParaShown=-1;
+  updateLyrics(q);
+}
+function updateLyrics(q){
+  if(!LYR.length||!lyrOn) return;
+  while(lyrIdx<LYR.length&&LYR[lyrIdx][0]<=q) lyrIdx++;
+  const cur=lyrIdx-1;
+  // какой куплет показывать: поём — текущий; в паузе — куплет следующего слога
+  let show=cur>=0?sylPara[cur]:(LYR.length?0:-1);
+  if((cur<0||q>sylEnd[cur]+1)&&lyrIdx<LYR.length) show=sylPara[lyrIdx];
+  if(show!==lyrParaShown){lyrParaShown=show; renderLyrPara(show);}
+  let curEl=null;
+  for(const sp of lyrSpans){
+    const i=sp._i;
+    const isCur=(i===cur&&q<sylEnd[i]);
+    sp.classList.toggle('cur',isCur);
+    sp.classList.toggle('done',i<lyrIdx&&!isCur);
+    sp.classList.toggle('soon',i===lyrIdx&&LYR[i][0]-q<=1.5);
+    if(isCur) curEl=sp;
+  }
+  // держим текущую строку в видимой зоне
+  if(curEl){
+    const ln=curEl.parentElement;
+    if(ln!==lyrPrevLine){
+      lyrPrevLine=ln;
+      const box=$('lyrics');
+      box.scrollTop=Math.max(0,ln.offsetTop-box.clientHeight/2+ln.offsetHeight/2);
+    }
+  }
+}
+$('lyrBtn').onclick=()=>{
+  lyrOn=!lyrOn;
+  $('lyrBtn').classList.toggle('on',lyrOn);
+  try{localStorage.setItem('vocalassist.lyrics',lyrOn?'1':'0');}catch(e){}
+  $('lyrics').style.display=(LYR.length&&lyrOn)?'':'none';
+  if(lyrOn) seekLyrics(playing&&ac?nowQ():startQ);
+};
+if(!lyrOn) $('lyrBtn').classList.remove('on');
+
 /* ---- уведомления ---- */
 let toastT=0;
 function toast(msg){
@@ -916,6 +1007,10 @@ function renderSongList(){
       b.className='badge '+(it.fmt==='MIDI'?'midi':'xml'); b.textContent=it.fmt;
       tt.appendChild(b);
     }
+    if(it.data&&it.data.lyr&&it.data.lyr.length){
+      const b=document.createElement('span'); b.className='badge lyrb'; b.textContent='📝';
+      tt.appendChild(b);
+    }
     if(it.kind==='repo'){
       const b=document.createElement('span'); b.className='badge repo'; b.textContent=t('repoBadge');
       tt.appendChild(b);
@@ -957,7 +1052,7 @@ $('songSearch').oninput=renderSongList;
 /* ---- песни из репозитория (папка songs/) ---- */
 const REPO_API='https://api.github.com/repos/keynode/VocalAssist/contents/songs';
 const RKEY='vocalassist.repo';
-const PARSE_V=2; // версия парсера: при улучшениях разборa кеш пере-парсится
+const PARSE_V=3; // версия парсера: при улучшениях разборa кеш пере-парсится
 let repoSongs=[];
 function repoCache(){try{return JSON.parse(localStorage.getItem(RKEY))||{};}catch(e){return{};}}
 async function loadRepoList(){
@@ -994,7 +1089,7 @@ async function openRepoSong(rs,auto){
     if(!resp.ok) throw Error('нет сети или файл недоступен');
     const s=await parseSongData(rs.name, await resp.arrayBuffer());
     rs.title=s.title; rs.artist=s.artist;
-    rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:s.tempo||100};
+    rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:s.tempo||100, lyr:s.lyr||[]};
     const cache=repoCache();
     cache[rs.name]={sha:rs.sha, v:PARSE_V, file:rs.file, title:rs.title, artist:rs.artist, data:rs.data};
     try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
@@ -1002,7 +1097,7 @@ async function openRepoSong(rs,auto){
   // автозагрузка не должна перекрывать песню, которую пользователь уже выбрал сам
   if(auto&&(curSongId!=='builtin'||playing)) return;
   applySong({id:rs.id, title:rs.title, artist:rs.artist, tempo:rs.data.tempo,
-    raw:rs.data.raw, acc:rs.data.acc, phr:rs.data.phr});
+    raw:rs.data.raw, acc:rs.data.acc, phr:rs.data.phr, lyr:rs.data.lyr});
 }
 
 /* ---- загрузка .mxl / .musicxml ---- */
@@ -1146,7 +1241,7 @@ function parseMidi(bytes){
   const hlen=u32b(); u16b(); const ntrk=u16b(), div=u16b();
   p+=hlen-6;
   if(div&0x8000) throw Error('SMPTE-время в MIDI не поддерживается');
-  const groups=new Map(), tempos=[], trackNames=[];
+  const groups=new Map(), tempos=[], trackNames=[], rawTexts=[];
   function grp(tr,ch){
     const k=tr+':'+ch;
     let g=groups.get(k);
@@ -1171,6 +1266,7 @@ function parseMidi(bytes){
         let l=0;do{b=bytes[p++];l=(l<<7)|(b&0x7f);}while(b&0x80);
         if(type===0x51&&l===3) tempos.push({tick, us:(bytes[p]<<16)|(bytes[p+1]<<8)|bytes[p+2]});
         else if(type===0x03&&!tname){let s='';for(let i=0;i<l;i++)s+=String.fromCharCode(bytes[p+i]);tname=s.trim();}
+        else if((type===0x01||type===0x05)&&l>0) rawTexts.push({tick, type, raw:bytes.slice(p,p+l)});
         p+=l;
       } else if(st===0xF0||st===0xF7){
         run=0;
@@ -1213,7 +1309,39 @@ function parseMidi(bytes){
     for(const [us,dur] of durByUs) if(!best||dur>best[1]) best=[us,dur];
     bpm=Math.round(60000000/best[0]);
   }
-  return {groups:[...groups.values()], trackNames, bpm};
+  // караоке-текст (.kar): text-события; кодировка — UTF-8, иначе windows-1251
+  const lyr=[], karT=[];
+  if(rawTexts.length){
+    let enc='utf-8';
+    try{
+      const total=rawTexts.reduce((n,e)=>n+e.raw.length,0);
+      const all=new Uint8Array(total); let o=0;
+      for(const e of rawTexts){all.set(e.raw,o);o+=e.raw.length;}
+      new TextDecoder('utf-8',{fatal:true}).decode(all);
+    }catch(e){enc='windows-1251';}
+    const td2=new TextDecoder(enc);
+    let pendNl=0;
+    rawTexts.sort((x,y)=>x.tick-y.tick);
+    for(const ev of rawTexts){
+      let x=td2.decode(ev.raw);
+      if(ev.type===0x01&&x.startsWith('@')){
+        if(x[1]==='T'){const v=x.slice(2).trim(); if(v&&v.indexOf(':')<0&&v.indexOf(String.fromCharCode(92))<0&&!/mid$/i.test(v)) karT.push(v);}
+        continue;
+      }
+      let nl=pendNl; pendNl=0;
+      const BS=String.fromCharCode(92), CR=String.fromCharCode(13), LF=String.fromCharCode(10);
+      if(ev.type===0x01){
+        if(x.startsWith(BS)){nl=2;x=x.slice(1);}
+        else if(x.startsWith('/')){nl=1;x=x.slice(1);}
+      } else {
+        while(x.startsWith(CR)||x.startsWith(LF)){nl=Math.max(nl,1);x=x.slice(1);}
+        while(x.endsWith(CR)||x.endsWith(LF)){x=x.slice(0,-1);pendNl=1;}
+      }
+      if(x==='') {pendNl=Math.max(pendNl,nl); continue;}
+      lyr.push([round3(ev.tick/div), x, nl]);
+    }
+  }
+  return {groups:[...groups.values()], trackNames, bpm, lyr, karT};
 }
 function catOfProg(prog,g){
   const p=prog==null?0:prog;
@@ -1269,7 +1397,9 @@ async function parseSongData(name,ab){
   if(/\.midi?$/i.test(name)){
     const mid=parseMidi(new Uint8Array(ab));
     const s=splitMidiSong(mid);
-    s.tempo=mid.bpm; s.title=name.replace(/\.[^.]+$/,''); s.artist='';
+    s.tempo=mid.bpm; s.lyr=mid.lyr;
+    s.title=(mid.karT&&mid.karT[0])||name.replace(/\.[^.]+$/,'');
+    s.artist=(mid.karT&&mid.karT[1])||'';
     return s;
   }
   const text=/\.mxl$/i.test(name)?await unzipMxl(new Uint8Array(ab)):new TextDecoder('utf-8').decode(ab);
@@ -1295,6 +1425,8 @@ function applySong(s){
   $('phTotal').textContent=PHR.length;
   lastSong={title:s.title, artist:s.artist||''};
   updCurSongLine();
+  LYR=s.lyr||[];
+  buildLyrics();
   MELODY=buildMelody();
   loopP=0; buildTicks(); rebuild(); reset(); updDur();
   LIB.last=curSongId; saveLibDebounced();
@@ -1308,7 +1440,7 @@ async function loadFile(file){
     id: existing?existing.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     title, artist, tempo:s.tempo||100,
     fmt:/\.midi?$/i.test(file.name)?'MIDI':'MusicXML',
-    raw:s.raw, acc:s.acc, phr:s.phr
+    raw:s.raw, acc:s.acc, phr:s.phr, lyr:s.lyr||[]
   };
   if(existing) LIB.songs[LIB.songs.indexOf(existing)]=entry;
   else LIB.songs.push(entry);
