@@ -220,7 +220,7 @@ html[lang="en"] .breath::after{content:"breath"}
   text-shadow:0 1px 2px #000e,0 0 6px #000b;
   max-height:7.6em;overflow:hidden}
 #lyrics .lline{display:block}
-#lyrics .lline span{background-image:linear-gradient(90deg,#ff9d523d,#ff9d523d);
+#lyrics .lline span:not(.hold){background-image:linear-gradient(90deg,#ff9d523d,#ff9d523d);
   background-repeat:no-repeat;background-size:0 100%;border-radius:4px}
 #lyrics .done{color:#ff9d52}
 #lyrics .cur{color:#ffd166;font-weight:700;text-shadow:0 0 12px #ff9d52cc,0 1px 2px #000}
@@ -228,10 +228,12 @@ html[lang="en"] .breath::after{content:"breath"}
 #lyrBall{position:absolute;width:9px;height:9px;border-radius:50%;display:none;margin-left:-4.5px;
   background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--ember));
   box-shadow:0 0 10px var(--ember),0 0 20px #ff9d5266}
-#lyrics .hold{display:inline-block;height:4px;margin:0 3px 3px 3px;border-radius:2px;
-  background:#5d67ab4d;position:relative;overflow:hidden;vertical-align:baseline}
-#lyrics .hold i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:2px;
-  background:linear-gradient(90deg,var(--flame),var(--ember));box-shadow:0 0 6px #ff9d5288}
+/* хвост тянущегося слога: штрих = одна доля, просвет = граница долей */
+#lyrics .hold{display:inline-block;height:4px;margin:0 3px 3px 3px;
+  background:repeating-linear-gradient(90deg,#5d67ab4d 0 13px,transparent 13px 18px);
+  position:relative;overflow:hidden;vertical-align:baseline}
+#lyrics .hold i{position:absolute;left:0;top:0;bottom:0;width:0;
+  background:repeating-linear-gradient(90deg,var(--flame) 0 13px,transparent 13px 18px)}
 .badge.lyrb{color:#e0b7ff;border-color:#77518c}
 
 footer{color:var(--muted);font-size:12px;line-height:1.6}
@@ -904,7 +906,7 @@ function renderLyrPara(p){
       // хвост тянущегося слога: длина пропорциональна длительности
       if(sylHold[i]>=1.1){
         const h=document.createElement('span'); h.className='hold';
-        h.style.width=Math.min(140,Math.round((sylHold[i]-0.6)*22))+'px';
+        h.style.width=Math.min(162,Math.round(sylHold[i]*18))+'px'; // 18px = одна доля, штрихи выровнены по долям
         const f=document.createElement('i'); h.appendChild(f);
         ld.appendChild(h); lyrHoldMap[i]=f;
       }
