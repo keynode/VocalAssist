@@ -560,30 +560,95 @@ function saveLib(){
 }
 let saveT=0;
 function saveLibDebounced(){clearTimeout(saveT); saveT=setTimeout(saveLib,400);}
+function mkChip(s, opts){
+  const c=document.createElement('div');
+  c.className='chip'+(s.id===curSongId?' active':'')+(opts.builtin?' builtin':'');
+  c.setAttribute('role','button'); c.tabIndex=0;
+  if(opts.title) c.title=opts.title;
+  const t=document.createElement('span'); t.textContent=(opts.prefix||'')+s.title; c.appendChild(t);
+  c.onclick=()=>{if(s.id!==curSongId) opts.open();};
+  c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.onclick();}};
+  if(opts.del){
+    const d=document.createElement('span'); d.className='del'; d.textContent='✕'; d.title='Удалить из списка';
+    d.onclick=e=>{e.stopPropagation(); opts.del();};
+    c.appendChild(d);
+  }
+  return c;
+}
 function renderShelf(){
   const sh=$('shelf'); sh.innerHTML='';
   const lab=document.createElement('span'); lab.textContent='Песни:'; sh.appendChild(lab);
-  [BUILTIN,...LIB.songs].forEach(s=>{
-    const c=document.createElement('div');
-    c.className='chip'+(s.id===curSongId?' active':'')+(s.id==='builtin'?' builtin':'');
-    c.setAttribute('role','button'); c.tabIndex=0;
-    const t=document.createElement('span'); t.textContent=s.title; c.appendChild(t);
-    c.onclick=()=>{if(s.id!==curSongId) applySong(s);};
-    c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.onclick();}};
-    if(s.id!=='builtin'){
-      const d=document.createElement('span'); d.className='del'; d.textContent='✕'; d.title='Удалить из списка';
-      d.onclick=e=>{
-        e.stopPropagation();
+  // встроенную прячем, если та же песня есть в репозитории
+  if(!repoSongs.some(s=>s.title===BUILTIN.title))
+    sh.appendChild(mkChip(BUILTIN,{builtin:true, open:()=>applySong(BUILTIN)}));
+  repoSongs.forEach(rs=>{
+    sh.appendChild(mkChip(rs,{prefix:'♪ ', title:'Из репозитория — доступна на всех устройствах', builtin:true,
+      open:()=>openRepoSong(rs).catch(err=>toast('Не удалось открыть: '+err.message))}));
+  });
+  LIB.songs.forEach(s=>{
+    sh.appendChild(mkChip(s,{title:'Сохранена только в этом браузере',
+      open:()=>applySong(s),
+      del:()=>{
         LIB.songs=LIB.songs.filter(x=>x.id!==s.id);
         delete LIB.prefs[s.id];
         toast('Удалено: '+s.title);
         if(curSongId===s.id){saveLib(); applySong(BUILTIN);}
         else {saveLib(); renderShelf();}
-      };
-      c.appendChild(d);
-    }
-    sh.appendChild(c);
+      }}));
   });
+}
+
+/* ---- песни из репозитория (папка songs/) ---- */
+const REPO_API='https://api.github.com/repos/keynode/VocalAssist/contents/songs';
+const RKEY='vocalassist.repo';
+let repoSongs=[];
+function repoCache(){try{return JSON.parse(localStorage.getItem(RKEY))||{};}catch(e){return{};}}
+async function loadRepoList(){
+  const cache=repoCache();
+  try{
+    const r=await fetch(REPO_API,{headers:{'Accept':'application/vnd.github+json'}});
+    if(!r.ok) throw 0;
+    const files=(await r.json()).filter(f=>f.type==='file'&&/\.(mxl|musicxml|xml)$/i.test(f.name));
+    repoSongs=files.map(f=>{
+      const c=cache[f.name], fresh=c&&c.sha===f.sha;
+      return {id:'repo:'+f.name, name:f.name, file:f.download_url, sha:f.sha,
+        title:fresh?c.title:f.name.replace(/\.(mxl|musicxml|xml)$/i,''),
+        artist:fresh?c.artist:'', data:fresh?c.data:null};
+    });
+    // подчистим кеш от удалённых из репозитория файлов
+    const names=new Set(files.map(f=>f.name));
+    let dirty=false;
+    for(const n of Object.keys(cache)) if(!names.has(n)){delete cache[n];dirty=true;}
+    if(dirty) try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
+  }catch(e){
+    // офлайн или лимит API — показываем то, что уже в кеше
+    repoSongs=Object.entries(cache).map(([name,c])=>({
+      id:'repo:'+name, name, file:c.file, sha:c.sha, title:c.title, artist:c.artist, data:c.data}));
+  }
+  renderShelf();
+  // если в прошлый раз была открыта песня из репозитория — вернёмся к ней
+  const last=repoSongs.find(s=>s.id===LIB.last);
+  if(last&&curSongId==='builtin'&&!playing) openRepoSong(last).catch(()=>{});
+}
+async function openRepoSong(rs){
+  if(!rs.data){
+    toast('Загружаю «'+rs.title+'»…');
+    const resp=await fetch(rs.file);
+    if(!resp.ok) throw Error('нет сети или файл недоступен');
+    const ab=await resp.arrayBuffer();
+    const text=/\.mxl$/i.test(rs.name)?await unzipMxl(new Uint8Array(ab)):new TextDecoder().decode(ab);
+    const score=parseMusicXML(text), s=splitSong(score);
+    let title=score.title, artist='';
+    const mm=score.title.split(/\s+[-–—]\s+/);
+    if(mm.length===2){artist=mm[0]; title=mm[1];}
+    rs.title=title; rs.artist=artist;
+    rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:score.tempo||100};
+    const cache=repoCache();
+    cache[rs.name]={sha:rs.sha, file:rs.file, title, artist, data:rs.data};
+    try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
+  }
+  applySong({id:rs.id, title:rs.title, artist:rs.artist, tempo:rs.data.tempo,
+    raw:rs.data.raw, acc:rs.data.acc, phr:rs.data.phr});
 }
 
 /* ---- загрузка .mxl / .musicxml ---- */
@@ -900,6 +965,7 @@ window.addEventListener('keydown',e=>{
 
 applySong(LIB.songs.find(s=>s.id===LIB.last)||BUILTIN);
 sizeCanvas();
+loadRepoList();
 window.addEventListener('resize',()=>{sizeCanvas();if(!playing){render(startQ);drawPitch();}});
 </script>
 </body>
