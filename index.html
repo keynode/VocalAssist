@@ -70,18 +70,45 @@ button.tgl.on{background:#33241457;border-color:var(--ember);color:var(--ember)}
 input[type=range]{accent-color:var(--ember);width:110px;cursor:pointer}
 input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 
-/* ---------- полка песен ---------- */
-.shelf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
-.chip{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);
-  border-radius:999px;padding:6px 8px 6px 14px;cursor:pointer;color:var(--txt);font-size:13px;
-  transition:border-color .15s,color .15s;touch-action:manipulation;user-select:none}
-.chip:hover{border-color:var(--ember)}
-.chip:focus-visible{outline:2px solid var(--air);outline-offset:2px}
-.chip.active{border-color:var(--ember);color:var(--ember);background:#33241457}
-.chip.builtin{padding-right:14px}
-.chip .del{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  color:var(--muted);font-size:12px}
-.chip .del:hover{background:#ff8f8f22;color:var(--bad)}
+/* ---------- библиотека песен ---------- */
+.shelf{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.shelf b{color:var(--flame)}
+.modal{position:fixed;inset:0;background:#05070ecc;backdrop-filter:blur(5px);display:none;
+  z-index:40;align-items:center;justify-content:center;padding:18px}
+.modal.open{display:flex}
+.sheet{background:var(--panel2);border:1px solid var(--line);border-radius:16px;
+  max-width:620px;width:100%;max-height:min(82dvh,680px);display:flex;flex-direction:column;
+  box-shadow:0 24px 70px #000d}
+.sh-head{display:flex;gap:10px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)}
+.sh-head .ttl{font-family:"Unbounded",sans-serif;font-weight:500;font-size:15px}
+.sh-head input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--txt);padding:8px 12px;font-size:14px;font-family:inherit;min-width:60px}
+.sh-head input:focus-visible{outline:2px solid var(--air);outline-offset:1px}
+.sh-close{background:transparent;border:none;padding:6px 10px;font-size:16px}
+.slist{overflow-y:auto;padding:8px;flex:1}
+.scard{display:flex;gap:12px;align-items:center;padding:11px 13px;border-radius:12px;cursor:pointer;
+  border:1px solid transparent;transition:background .12s,border-color .12s;user-select:none}
+.scard:hover{background:#ffffff07;border-color:var(--line)}
+.scard:focus-visible{outline:2px solid var(--air);outline-offset:1px}
+.scard.active{border-color:var(--ember);background:#33241436}
+.scard .s-main{flex:1;min-width:0}
+.s-title{font-weight:600;font-size:15px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.scard.active .s-title{color:var(--ember)}
+.s-sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.s-meta{color:var(--muted);font-size:12px;margin-top:3px;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10.5px;font-weight:400;
+  border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.midi{color:#9ecbff;border-color:#31517a}
+.badge.xml{color:#b6f0c0;border-color:#2f6b45}
+.badge.repo{color:var(--flame);border-color:#7a5a28}
+.s-del{background:transparent;border:none;color:var(--muted);font-size:14px;padding:8px 10px;border-radius:8px}
+.s-del:hover{color:var(--bad);background:#ff8f8f14}
+.sh-foot{display:flex;gap:10px;align-items:center;padding:11px 16px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:12px;flex-wrap:wrap}
+@media (max-width:640px){
+  .modal{padding:0;align-items:flex-end}
+  .sheet{max-width:none;border-radius:16px 16px 0 0;max-height:88dvh}
+}
 
 /* ---------- timeline ---------- */
 .tl{position:relative;height:26px;cursor:pointer;user-select:none;touch-action:none}
@@ -221,7 +248,10 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     </div>
   </div>
 
-  <div class="shelf" id="shelf"></div>
+  <div class="shelf">
+    <button id="songsBtn">🎵 Песни <b id="songCount"></b> ⌄</button>
+    <span id="shelfHint">нажми, чтобы выбрать песню или открыть файл</span>
+  </div>
 
   <div class="tl" id="tl">
     <div class="rail"></div>
@@ -251,6 +281,22 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала
   </footer>
 </div>
+
+<div class="modal" id="songModal">
+  <div class="sheet" role="dialog" aria-label="Библиотека песен">
+    <div class="sh-head">
+      <span class="ttl">🎵 Песни</span>
+      <input id="songSearch" type="search" placeholder="поиск по названию…" autocomplete="off">
+      <button class="sh-close" id="songClose" title="Закрыть (Esc)">✕</button>
+    </div>
+    <div class="slist" id="slist"></div>
+    <div class="sh-foot">
+      <button id="fileBtn2">📂 открыть файл…</button>
+      <span>файлы из папки <b>songs/</b> репозитория появляются здесь сами на всех устройствах</span>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -661,43 +707,93 @@ function saveLib(){
 }
 let saveT=0;
 function saveLibDebounced(){clearTimeout(saveT); saveT=setTimeout(saveLib,400);}
-function mkChip(s, opts){
-  const c=document.createElement('div');
-  c.className='chip'+(s.id===curSongId?' active':'')+(opts.builtin?' builtin':'');
-  c.setAttribute('role','button'); c.tabIndex=0;
-  if(opts.title) c.title=opts.title;
-  const t=document.createElement('span'); t.textContent=(opts.prefix||'')+s.title; c.appendChild(t);
-  c.onclick=()=>{if(s.id!==curSongId) opts.open();};
-  c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.onclick();}};
-  if(opts.del){
-    const d=document.createElement('span'); d.className='del'; d.textContent='✕'; d.title='Удалить из списка';
-    d.onclick=e=>{e.stopPropagation(); opts.del();};
-    c.appendChild(d);
+function allSongs(){
+  const items=[];
+  if(!repoSongs.some(s=>s.title===BUILTIN.title))
+    items.push({kind:'builtin', id:'builtin', title:BUILTIN.title, artist:BUILTIN.artist,
+      fmt:'', data:BUILTIN, open:()=>applySong(BUILTIN)});
+  repoSongs.forEach(rs=>items.push({kind:'repo', id:rs.id, title:rs.title, artist:rs.artist,
+    fmt:/\.midi?$/i.test(rs.name)?'MIDI':'MusicXML', size:rs.size, data:rs.data,
+    open:()=>openRepoSong(rs).catch(err=>toast('Не удалось открыть: '+err.message))}));
+  LIB.songs.forEach(s=>items.push({kind:'local', id:s.id, title:s.title, artist:s.artist,
+    fmt:s.fmt||'', data:s, open:()=>applySong(s),
+    del:()=>{
+      LIB.songs=LIB.songs.filter(x=>x.id!==s.id);
+      delete LIB.prefs[s.id];
+      toast('Удалено: '+s.title);
+      saveLib();
+      if(curSongId===s.id) applySong(BUILTIN); else renderShelf();
+    }}));
+  return items;
+}
+function statsLine(d){
+  if(!d||!d.raw||!d.raw.length) return null;
+  const mns=d.raw.map(n=>n[2]);
+  const lo=Math.min(...mns), hi=Math.max(...mns);
+  let total=0;
+  for(const n of d.raw) total=Math.max(total,n[0]+n[1]);
+  for(const n of (d.acc||[])) total=Math.max(total,n[0]+n[1]);
+  const t=d.tempo||100;
+  return fmt(total/(t/60))+' · фраз: '+(d.phr?d.phr.length:'—')+' · '+
+    rusOf(lo)+' '+nameOf(lo)+' — '+rusOf(hi)+' '+nameOf(hi)+' · ♩'+t+
+    ((d.acc&&d.acc.length)?'':' · без аккомпанемента');
+}
+const KIND_LABEL={builtin:'встроенная', repo:'из репозитория · на всех устройствах', local:'только в этом браузере'};
+function renderSongList(){
+  const filter=($('songSearch').value||'').trim().toLowerCase();
+  const list=$('slist'); list.innerHTML='';
+  let shown=0;
+  for(const it of allSongs()){
+    if(filter&&!(it.title+' '+(it.artist||'')+' '+(it.fmt||'')+' '+KIND_LABEL[it.kind]).toLowerCase().includes(filter)) continue;
+    shown++;
+    const c=document.createElement('div');
+    c.className='scard'+(it.id===curSongId?' active':'');
+    c.setAttribute('role','button'); c.tabIndex=0;
+    const main=document.createElement('div'); main.className='s-main';
+    const t=document.createElement('div'); t.className='s-title';
+    t.append(it.title);
+    if(it.fmt){
+      const b=document.createElement('span');
+      b.className='badge '+(it.fmt==='MIDI'?'midi':'xml'); b.textContent=it.fmt;
+      t.appendChild(b);
+    }
+    if(it.kind==='repo'){
+      const b=document.createElement('span'); b.className='badge repo'; b.textContent='♪ репозиторий';
+      t.appendChild(b);
+    }
+    if(it.id===curSongId) t.append(' ▶');
+    const sub=document.createElement('div'); sub.className='s-sub';
+    sub.textContent=(it.artist?it.artist+' · ':'')+KIND_LABEL[it.kind];
+    const meta=document.createElement('div'); meta.className='s-meta';
+    meta.textContent=statsLine(it.data)||
+      ('ещё не загружалась — нажми, чтобы открыть'+(it.size?' · ≈'+Math.max(1,Math.round(it.size/1024))+' КБ':''));
+    main.append(t,sub,meta); c.appendChild(main);
+    if(it.del){
+      const d=document.createElement('button'); d.className='s-del'; d.textContent='✕';
+      d.title='Удалить из этого браузера';
+      d.onclick=e=>{e.stopPropagation(); it.del(); renderSongList();};
+      c.appendChild(d);
+    }
+    c.onclick=()=>{closeSongModal(); if(it.id!==curSongId) it.open();};
+    c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.onclick();}};
+    list.appendChild(c);
   }
-  return c;
+  if(!shown){
+    const e=document.createElement('div'); e.className='s-sub'; e.style.padding='14px';
+    e.textContent=filter?'Ничего не найдено':'Пока нет песен — открой файл или положи его в songs/';
+    list.appendChild(e);
+  }
 }
 function renderShelf(){
-  const sh=$('shelf'); sh.innerHTML='';
-  const lab=document.createElement('span'); lab.textContent='Песни:'; sh.appendChild(lab);
-  // встроенную прячем, если та же песня есть в репозитории
-  if(!repoSongs.some(s=>s.title===BUILTIN.title))
-    sh.appendChild(mkChip(BUILTIN,{builtin:true, open:()=>applySong(BUILTIN)}));
-  repoSongs.forEach(rs=>{
-    sh.appendChild(mkChip(rs,{prefix:'♪ ', title:'Из репозитория — доступна на всех устройствах', builtin:true,
-      open:()=>openRepoSong(rs).catch(err=>toast('Не удалось открыть: '+err.message))}));
-  });
-  LIB.songs.forEach(s=>{
-    sh.appendChild(mkChip(s,{title:'Сохранена только в этом браузере',
-      open:()=>applySong(s),
-      del:()=>{
-        LIB.songs=LIB.songs.filter(x=>x.id!==s.id);
-        delete LIB.prefs[s.id];
-        toast('Удалено: '+s.title);
-        if(curSongId===s.id){saveLib(); applySong(BUILTIN);}
-        else {saveLib(); renderShelf();}
-      }}));
-  });
+  $('songCount').textContent=allSongs().length;
+  if($('songModal').classList.contains('open')) renderSongList();
 }
+function openSongModal(){renderSongList(); $('songModal').classList.add('open');}
+function closeSongModal(){$('songModal').classList.remove('open');}
+$('songsBtn').onclick=openSongModal;
+$('songClose').onclick=closeSongModal;
+$('songModal').onclick=e=>{if(e.target===$('songModal')) closeSongModal();};
+$('songSearch').oninput=renderSongList;
 
 /* ---- песни из репозитория (папка songs/) ---- */
 const REPO_API='https://api.github.com/repos/keynode/VocalAssist/contents/songs';
@@ -712,7 +808,7 @@ async function loadRepoList(){
     const files=(await r.json()).filter(f=>f.type==='file'&&/\.(mxl|musicxml|xml|midi?)$/i.test(f.name));
     repoSongs=files.map(f=>{
       const c=cache[f.name], fresh=c&&c.sha===f.sha;
-      return {id:'repo:'+f.name, name:f.name, file:f.download_url, sha:f.sha,
+      return {id:'repo:'+f.name, name:f.name, file:f.download_url, sha:f.sha, size:f.size,
         title:fresh?c.title:f.name.replace(/\.(mxl|musicxml|xml|midi?)$/i,''),
         artist:fresh?c.artist:'', data:fresh?c.data:null};
     });
@@ -1050,6 +1146,7 @@ async function loadFile(file){
   const entry={
     id: existing?existing.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     title, artist, tempo:s.tempo||100,
+    fmt:/\.midi?$/i.test(file.name)?'MIDI':'MusicXML',
     raw:s.raw, acc:s.acc, phr:s.phr
   };
   if(existing) LIB.songs[LIB.songs.indexOf(existing)]=entry;
@@ -1059,6 +1156,7 @@ async function loadFile(file){
   toast((existing?'Обновлено: ':'Добавлено: ')+title+' · фраз: '+entry.phr.length+(entry.acc.length?'':' · без аккомпанемента'));
 }
 $('fileBtn').onclick=()=>$('fileInp').click();
+$('fileBtn2').onclick=()=>{closeSongModal(); $('fileInp').click();};
 $('fileInp').onchange=e=>{
   const f=e.target.files[0];
   if(f) loadFile(f).catch(err=>toast('Не удалось открыть: '+err.message));
@@ -1259,7 +1357,11 @@ $('micBtn').onclick=micToggle;
 
 /* ---- hotkeys ---- */
 window.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.classList?.contains('chip')) return;
+  if($('songModal').classList.contains('open')){
+    if(e.code==='Escape') closeSongModal();
+    return;
+  }
+  if(e.target.tagName==='INPUT'||e.target.classList?.contains('scard')) return;
   if(e.code==='Space'){e.preventDefault();if(e.target.tagName==='BUTTON')e.target.blur();playing?pause():play(true);}
   else if(e.code==='ArrowLeft'){e.preventDefault();phraseStep(-1);}
   else if(e.code==='ArrowRight'){e.preventDefault();phraseStep(1);}
