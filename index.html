@@ -1052,7 +1052,7 @@ $('songSearch').oninput=renderSongList;
 /* ---- песни из репозитория (папка songs/) ---- */
 const REPO_API='https://api.github.com/repos/keynode/VocalAssist/contents/songs';
 const RKEY='vocalassist.repo';
-const PARSE_V=3; // версия парсера: при улучшениях разборa кеш пере-парсится
+const PARSE_V=4; // версия парсера: при улучшениях разборa кеш пере-парсится
 let repoSongs=[];
 function repoCache(){try{return JSON.parse(localStorage.getItem(RKEY))||{};}catch(e){return{};}}
 async function loadRepoList(){
@@ -1398,7 +1398,9 @@ async function parseSongData(name,ab){
     const mid=parseMidi(new Uint8Array(ab));
     const s=splitMidiSong(mid);
     s.tempo=mid.bpm; s.lyr=mid.lyr;
-    s.title=(mid.karT&&mid.karT[0])||name.replace(/\.[^.]+$/,'');
+    // название: из караоке-заголовка @T, иначе имя файла без технических суффиксов
+    s.title=(mid.karT&&mid.karT[0])||
+      name.replace(/\.[^.]+$/,'').replace(/\s*\((?:Караоке|Karaoke|XG|GM|GS)\)\s*$/i,'').trim();
     s.artist=(mid.karT&&mid.karT[1])||'';
     return s;
   }
