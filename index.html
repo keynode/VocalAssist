@@ -1120,12 +1120,17 @@ function splitSong(score){
   }
   accNotes=accNotes.concat(extra).sort((a,b)=>a.q-b.q||a.m-b.m);
   const raw=vocal.map(n=>[n.q,n.d,n.m]);
+  return {raw, acc:accNotes.map(n=>[n.q,n.d,n.m]), phr:findPhrases(raw,score.tempo)};
+}
+// вдох = пауза от ~полсекунды реального времени (порог в четвертях зависит от темпа)
+function findPhrases(raw,tempo){
+  const thr=Math.max(0.75, 0.5*(tempo||100)/60);
   const phr=[raw.length?raw[0][0]:0];
   for(let i=1;i<raw.length;i++){
     const gap=raw[i][0]-(raw[i-1][0]+raw[i-1][1]);
-    if(gap>=1.25) phr.push(raw[i][0]);
+    if(gap>=thr) phr.push(raw[i][0]);
   }
-  return {raw, acc:accNotes.map(n=>[n.q,n.d,n.m]), phr};
+  return phr;
 }
 
 /* ---- импорт MIDI (.mid) ---- */
@@ -1255,12 +1260,7 @@ function splitMidiSong(mid){
     for(const n of g.notes) acc.push([round3(n.q),round3(n.d),n.m,cat]);
   }
   acc.sort((a,b)=>a[0]-b[0]||a[2]-b[2]);
-  const phr=[raw.length?raw[0][0]:0];
-  for(let i=1;i<raw.length;i++){
-    const gap=raw[i][0]-(raw[i-1][0]+raw[i-1][1]);
-    if(gap>=1.25) phr.push(raw[i][0]);
-  }
-  return {raw,acc,phr};
+  return {raw, acc, phr:findPhrases(raw,mid.bpm)};
 }
 
 /* ---- разбор файла песни любого формата ---- */
