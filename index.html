@@ -190,7 +190,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     <button id="legato" class="tgl on">легато</button>
     <button id="micBtn" class="tgl" title="Показывать, какую ноту ты поёшь">🎙 микрофон</button>
     <button id="fileBtn" title="Открыть файл .mxl или .musicxml">📂 ноты</button>
-    <input id="fileInp" type="file" accept=".mxl,.musicxml,.xml" style="display:none">
+    <input id="fileInp" type="file" accept=".mxl,.musicxml,.xml,.mid,.midi" style="display:none">
     <div class="spacer"></div>
     <div class="settings">
       <div class="slider">Темп <input id="tempo" type="range" min="40" max="220" value="100"><span class="val" id="tempoVal">100</span></div>
@@ -224,8 +224,8 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
   <footer>
     Счёт «4-3-2-1» перед стартом — вступай, когда загорится первая клавиша. Голубой пунктир — вдох.
     «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. «Тон» транспонирует всё на полутон за шаг.
-    «📂 ноты» открывает любой файл .mxl или .musicxml. С «🎙 микрофоном» пой в наушниках — точка на линии показывает твою ноту,
-    зелёная = попал, 🎯 — процент попаданий.
+    «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту,
+    зелёный = попал, 🎯 — процент попаданий.
     &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала
   </footer>
 </div>
@@ -332,9 +332,52 @@ function initAudio(){
   master=ac.createGain(); master.gain.value=0.9; master.connect(ac.destination);
   voxGain=ac.createGain(); voxGain.gain.value=$('vol').value/100; voxGain.connect(master);
   accGain=ac.createGain(); accGain.gain.value=$('accVol').value/100; accGain.connect(master);
+  loadSoundFonts();
 }
+
+/* ---- сэмплерный синтезатор (WebAudioFont, локальные файлы в sf/) ---- */
+const SF_PLAYER_SRC='sf/WebAudioFontPlayer.js';
+const SF_FONTS=[
+  {file:'sf/0000_FluidR3_GM_sf2_file.js', name:'_tone_0000_FluidR3_GM_sf2_file'}, // 0: клавиши
+  {file:'sf/0330_FluidR3_GM_sf2_file.js', name:'_tone_0330_FluidR3_GM_sf2_file'}, // 1: бас
+  {file:'sf/0250_FluidR3_GM_sf2_file.js', name:'_tone_0250_FluidR3_GM_sf2_file'}, // 2: гитара
+  {file:'sf/0480_FluidR3_GM_sf2_file.js', name:'_tone_0480_FluidR3_GM_sf2_file'}, // 3: струнные
+  {file:'sf/0730_FluidR3_GM_sf2_file.js', name:'_tone_0730_FluidR3_GM_sf2_file'}, // 4: флейта — вокальная линия
+];
+let sfPlayer=null, sfReady=false, sfFonts=[], sfScriptsP=null, sfLoadP=null;
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=src; s.onload=res; s.onerror=()=>rej(Error('не загрузился '+src));
+    document.head.appendChild(s);
+  });
+}
+function preloadSfScripts(){
+  if(!sfScriptsP)
+    sfScriptsP=(async()=>{
+      await loadScript(SF_PLAYER_SRC);
+      for(const f of SF_FONTS) await loadScript(f.file);
+    })();
+  return sfScriptsP;
+}
+function loadSoundFonts(){
+  if(sfLoadP) return sfLoadP;
+  sfLoadP=(async()=>{
+    await preloadSfScripts();
+    sfPlayer=new WebAudioFontPlayer();
+    sfFonts=SF_FONTS.map(f=>window[f.name]);
+    sfFonts.forEach(f=>sfPlayer.adjustPreset(ac,f));
+    sfReady=true;
+  })().catch(e=>{
+    sfLoadP=null;
+    console.warn('сэмплы недоступны, играем на встроенном синтезе:',e.message);
+  });
+  return sfLoadP;
+}
+function stopSound(){ if(sfPlayer&&ac) sfPlayer.cancelQueue(ac); }
 function freq(m){return 440*Math.pow(2,(m-69)/12);}
 function playVox(m,dur){
+  if(sfReady){ sfPlayer.queueWaveTable(ac,voxGain,sfFonts[4],ac.currentTime,m,dur,0.55); return; }
   const t=ac.currentTime, g=ac.createGain();
   const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1600; f.Q.value=0.7;
   g.connect(f); f.connect(voxGain);
@@ -353,7 +396,12 @@ function playVox(m,dur){
   g.gain.setValueAtTime(peak,t+Math.max(0.04,dur-0.06));
   g.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.2);
 }
-function playAcc(m,dur){
+function playAcc(m,dur,cat){
+  if(sfReady){
+    const font=sfFonts[cat||0]||sfFonts[0];
+    sfPlayer.queueWaveTable(ac,accGain,font,ac.currentTime,m,dur,cat===1?0.5:0.35);
+    return;
+  }
   const t=ac.currentTime, g=ac.createGain();
   const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value=2200; f.Q.value=0.5;
   g.connect(f); f.connect(accGain);
@@ -400,7 +448,7 @@ function setPos(q){
   if(ac){startAcTime=ac.currentTime;}
   updHud(q); render(q); updNoteBox(q);
 }
-function reset(){cancelAnimationFrame(raf);playing=false;countEl.style.display='none';
+function reset(){cancelAnimationFrame(raf);playing=false;stopSound();countEl.style.display='none';
   $('play').textContent='▶ Петь';setPos(0);
   $('curNN').textContent='—';$('curSub').textContent='текущая нота';$('nextNN').textContent='—';}
 
@@ -451,8 +499,8 @@ function tick(){
     curIdx++;
   }
   while(accIdx<ACC.length&&ACC[accIdx][0]<=q){
-    const [s,d,m]=ACC[accIdx];
-    playAcc(m+TRANSP,d/qPerSec());
+    const [s,d,m,cat]=ACC[accIdx];
+    playAcc(m+TRANSP,d/qPerSec(),cat);
     accIdx++;
   }
   for(const [m,rel] of active){if(q>=rel){if(keyEl[m])keyEl[m].classList.remove('on');active.delete(m);}}
@@ -474,10 +522,10 @@ function play(withCount=true){
   curIdx=idxFor(MELODY,q0); accIdx=idxFor(ACC,q0);
   raf=requestAnimationFrame(tick);
 }
-function pause(){startQ=Math.max(nowQ(),0);cancelAnimationFrame(raf);playing=false;
+function pause(){startQ=Math.max(nowQ(),0);cancelAnimationFrame(raf);playing=false;stopSound();
   countEl.style.display='none';$('play').textContent='▶ Петь';}
 function jumpTo(q){
-  clearKeys(); startQ=q; startQ0Play=q;
+  clearKeys(); stopSound(); startQ=q; startQ0Play=q;
   curIdx=idxFor(MELODY,q); accIdx=idxFor(ACC,q);
   pitchSamples.length=0;
   if(ac)startAcTime=ac.currentTime;
@@ -616,11 +664,11 @@ async function loadRepoList(){
   try{
     const r=await fetch(REPO_API,{headers:{'Accept':'application/vnd.github+json'}});
     if(!r.ok) throw 0;
-    const files=(await r.json()).filter(f=>f.type==='file'&&/\.(mxl|musicxml|xml)$/i.test(f.name));
+    const files=(await r.json()).filter(f=>f.type==='file'&&/\.(mxl|musicxml|xml|midi?)$/i.test(f.name));
     repoSongs=files.map(f=>{
       const c=cache[f.name], fresh=c&&c.sha===f.sha;
       return {id:'repo:'+f.name, name:f.name, file:f.download_url, sha:f.sha,
-        title:fresh?c.title:f.name.replace(/\.(mxl|musicxml|xml)$/i,''),
+        title:fresh?c.title:f.name.replace(/\.(mxl|musicxml|xml|midi?)$/i,''),
         artist:fresh?c.artist:'', data:fresh?c.data:null};
     });
     // подчистим кеш от удалённых из репозитория файлов
@@ -643,14 +691,9 @@ async function openRepoSong(rs){
     toast('Загружаю «'+rs.title+'»…');
     const resp=await fetch(rs.file);
     if(!resp.ok) throw Error('нет сети или файл недоступен');
-    const ab=await resp.arrayBuffer();
-    const text=/\.mxl$/i.test(rs.name)?await unzipMxl(new Uint8Array(ab)):new TextDecoder().decode(ab);
-    const score=parseMusicXML(text), s=splitSong(score);
-    let title=score.title, artist='';
-    const mm=score.title.split(/\s+[-–—]\s+/);
-    if(mm.length===2){artist=mm[0]; title=mm[1];}
-    rs.title=title; rs.artist=artist;
-    rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:score.tempo||100};
+    const s=await parseSongData(rs.name, await resp.arrayBuffer());
+    rs.title=s.title; rs.artist=s.artist;
+    rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:s.tempo||100};
     const cache=repoCache();
     cache[rs.name]={sha:rs.sha, file:rs.file, title, artist, data:rs.data};
     try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
@@ -782,6 +825,158 @@ function splitSong(score){
   }
   return {raw, acc:accNotes.map(n=>[n.q,n.d,n.m]), phr};
 }
+
+/* ---- импорт MIDI (.mid) ---- */
+const round3=x=>Math.round(x*1000)/1000;
+function parseMidi(bytes){
+  const dv=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  let p=0;
+  const str=n=>{let s='';for(let i=0;i<n;i++)s+=String.fromCharCode(bytes[p+i]);p+=n;return s;};
+  const u32b=()=>{const v=dv.getUint32(p);p+=4;return v;};
+  const u16b=()=>{const v=dv.getUint16(p);p+=2;return v;};
+  if(str(4)!=='MThd') throw Error('это не MIDI-файл');
+  const hlen=u32b(); u16b(); const ntrk=u16b(), div=u16b();
+  p+=hlen-6;
+  if(div&0x8000) throw Error('SMPTE-время в MIDI не поддерживается');
+  const groups=new Map(), tempos=[], trackNames=[];
+  function grp(tr,ch){
+    const k=tr+':'+ch;
+    let g=groups.get(k);
+    if(!g){g={tr,ch,notes:[],prog:null};groups.set(k,g);}
+    return g;
+  }
+  for(let tr=0;tr<ntrk&&p<bytes.length;tr++){
+    const id=str(4), len=u32b();
+    if(id!=='MTrk'){p+=len;tr--;continue;}
+    const end=p+len;
+    let tick=0, run=0, tname='';
+    const open={};
+    while(p<end){
+      let d=0,b;
+      do{b=bytes[p++];d=(d<<7)|(b&0x7f);}while(b&0x80);
+      tick+=d;
+      let st=bytes[p];
+      if(st&0x80){p++; if(st<0xF0) run=st;} else st=run;
+      if(st===0xFF){
+        run=0;
+        const type=bytes[p++];
+        let l=0;do{b=bytes[p++];l=(l<<7)|(b&0x7f);}while(b&0x80);
+        if(type===0x51&&l===3) tempos.push({tick, us:(bytes[p]<<16)|(bytes[p+1]<<8)|bytes[p+2]});
+        else if(type===0x03&&!tname){let s='';for(let i=0;i<l;i++)s+=String.fromCharCode(bytes[p+i]);tname=s.trim();}
+        p+=l;
+      } else if(st===0xF0||st===0xF7){
+        run=0;
+        let l=0;do{b=bytes[p++];l=(l<<7)|(b&0x7f);}while(b&0x80);
+        p+=l;
+      } else {
+        const ch=st&0x0f, hi=st&0xf0;
+        if(hi===0x90||hi===0x80){
+          const note=bytes[p++], vel=bytes[p++];
+          const key=ch+':'+note;
+          if(hi===0x90&&vel>0) open[key]=tick;
+          else{
+            const t0=open[key]; delete open[key];
+            if(t0!=null&&tick>t0) grp(tr,ch).notes.push({q:t0/div, d:(tick-t0)/div, m:note});
+          }
+        }
+        else if(hi===0xC0){grp(tr,ch).prog??=bytes[p]; p++;}
+        else if(hi===0xD0) p+=1;
+        else p+=2; /* 0xA0/0xB0/0xE0 */
+      }
+    }
+    for(const key in open){
+      const [ch,note]=key.split(':').map(Number);
+      grp(tr,ch).notes.push({q:open[key]/div, d:0.5, m:note});
+    }
+    trackNames[tr]=tname;
+    p=end;
+  }
+  let bpm=120;
+  if(tempos.length){
+    tempos.sort((a,b)=>a.tick-b.tick);
+    let endTick=0;
+    for(const g of groups.values()) for(const n of g.notes) endTick=Math.max(endTick,(n.q+n.d)*div);
+    const durByUs=new Map();
+    for(let i=0;i<tempos.length;i++){
+      const from=tempos[i].tick, to=i+1<tempos.length?tempos[i+1].tick:Math.max(endTick,from+1);
+      durByUs.set(tempos[i].us,(durByUs.get(tempos[i].us)||0)+(to-from));
+    }
+    let best=null;
+    for(const [us,dur] of durByUs) if(!best||dur>best[1]) best=[us,dur];
+    bpm=Math.round(60000000/best[0]);
+  }
+  return {groups:[...groups.values()], trackNames, bpm};
+}
+function catOfProg(prog,g){
+  const p=prog==null?0:prog;
+  if(p>=32&&p<=39) return 1;                    // бас
+  if(p>=24&&p<=31) return 2;                    // гитара
+  if((p>=40&&p<=55)||(p>=88&&p<=95)) return 3;  // струнные и пэды
+  if(g&&g.notes.length){
+    const ps=g.notes.map(n=>n.m).sort((a,b)=>a-b);
+    if(ps[ps.length>>1]<48) return 1;
+  }
+  return 0;                                     // клавиши и всё остальное
+}
+function splitMidiSong(mid){
+  const cands=mid.groups.filter(g=>g.ch!==9&&g.notes.length>0); // канал 10 (9) — ударные, пропускаем
+  if(!cands.length) throw Error('в MIDI нет нот');
+  // выбираем вокальный голос: узкий певческий диапазон, мало многоголосия, подходящая высота
+  let best=null, bestScore=-1e9;
+  for(const g of cands){
+    const ps=g.notes.map(n=>n.m).sort((a,b)=>a-b);
+    const med=ps[ps.length>>1], rng=ps[ps.length-1]-ps[0];
+    const ns=[...g.notes].sort((a,b)=>a.q-b.q);
+    let ov=0;
+    for(let i=1;i<ns.length;i++) if(ns[i].q<ns[i-1].q+ns[i-1].d-1e-6) ov++;
+    let s=0;
+    if(g.notes.length<30) s-=100;
+    s-=Math.abs(med-67);
+    s-=Math.max(0,rng-19)*0.7;
+    s-=(ov/ns.length)*5;
+    if(/voc|melod|voice|голос|вокал|lead|sing|мелод/i.test(mid.trackNames[g.tr]||'')) s+=25;
+    if(s>bestScore){bestScore=s;best=g;}
+  }
+  const vn=[...best.notes].sort((a,b)=>a.q-b.q||b.m-a.m);
+  const vocal=[]; let lastQ=-1e9;
+  for(const n of vn){
+    if(Math.abs(n.q-lastQ)<1e-3) continue;
+    lastQ=n.q; vocal.push({...n});
+  }
+  for(let i=0;i<vocal.length-1;i++)
+    if(vocal[i].q+vocal[i].d>vocal[i+1].q) vocal[i].d=Math.max(0.1,round3(vocal[i+1].q-vocal[i].q));
+  const raw=vocal.map(n=>[round3(n.q),round3(n.d),n.m]);
+  const acc=[];
+  for(const g of cands){
+    if(g===best) continue;
+    const cat=catOfProg(g.prog,g);
+    for(const n of g.notes) acc.push([round3(n.q),round3(n.d),n.m,cat]);
+  }
+  acc.sort((a,b)=>a[0]-b[0]||a[2]-b[2]);
+  const phr=[raw.length?raw[0][0]:0];
+  for(let i=1;i<raw.length;i++){
+    const gap=raw[i][0]-(raw[i-1][0]+raw[i-1][1]);
+    if(gap>=1.25) phr.push(raw[i][0]);
+  }
+  return {raw,acc,phr};
+}
+
+/* ---- разбор файла песни любого формата ---- */
+async function parseSongData(name,ab){
+  if(/\.midi?$/i.test(name)){
+    const mid=parseMidi(new Uint8Array(ab));
+    const s=splitMidiSong(mid);
+    s.tempo=mid.bpm; s.title=name.replace(/\.[^.]+$/,''); s.artist='';
+    return s;
+  }
+  const text=/\.mxl$/i.test(name)?await unzipMxl(new Uint8Array(ab)):new TextDecoder('utf-8').decode(ab);
+  const score=parseMusicXML(text), s=splitSong(score);
+  let title=score.title, artist='';
+  const mm=score.title.split(/\s+[-–—]\s+/);
+  if(mm.length===2){artist=mm[0]; title=mm[1];}
+  s.tempo=score.tempo; s.title=title; s.artist=artist;
+  return s;
+}
 function applySong(s){
   if(playing) pause();
   curSongId=s.id||'builtin';
@@ -802,18 +997,12 @@ function applySong(s){
   renderShelf();
 }
 async function loadFile(file){
-  let text;
-  if(/\.mxl$/i.test(file.name)) text=await unzipMxl(new Uint8Array(await file.arrayBuffer()));
-  else text=await file.text();
-  const score=parseMusicXML(text);
-  const s=splitSong(score);
-  let title=score.title, artist='';
-  const mm=score.title.split(/\s+[-–—]\s+/);
-  if(mm.length===2){artist=mm[0]; title=mm[1];}
+  const s=await parseSongData(file.name, await file.arrayBuffer());
+  const title=s.title, artist=s.artist;
   const existing=LIB.songs.find(x=>x.title===title&&x.artist===artist);
   const entry={
     id: existing?existing.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    title, artist, tempo:score.tempo||100,
+    title, artist, tempo:s.tempo||100,
     raw:s.raw, acc:s.acc, phr:s.phr
   };
   if(existing) LIB.songs[LIB.songs.indexOf(existing)]=entry;
@@ -1001,6 +1190,7 @@ window.addEventListener('keydown',e=>{
 applySong(LIB.songs.find(s=>s.id===LIB.last)||BUILTIN);
 sizeCanvas();
 loadRepoList();
+preloadSfScripts(); // сэмплы инструментов качаются в фоне, к первому нажатию «Петь» обычно уже готовы
 window.addEventListener('resize',()=>{sizeCanvas();if(!playing){render(startQ);drawPitch();}});
 </script>
 </body>
