@@ -552,6 +552,7 @@ try{
   const j=JSON.parse(localStorage.getItem(LKEY));
   if(j&&Array.isArray(j.songs)) LIB={songs:j.songs, prefs:j.prefs||{}, last:j.last||null};
 }catch(e){}
+const LAST0=LIB.last; // что было открыто в прошлый раз (до того, как applySong перезапишет)
 let curSongId='builtin';
 const BUILTIN={id:'builtin', title:'Костёр', artist:'Машина Времени', tempo:100, raw:RAW, acc:ACCRAW, phr:PHRASES};
 function saveLib(){
@@ -627,7 +628,7 @@ async function loadRepoList(){
   }
   renderShelf();
   // если в прошлый раз была открыта песня из репозитория — вернёмся к ней
-  const last=repoSongs.find(s=>s.id===LIB.last);
+  const last=repoSongs.find(s=>s.id===LAST0);
   if(last&&curSongId==='builtin'&&!playing) openRepoSong(last).catch(()=>{});
 }
 async function openRepoSong(rs){
