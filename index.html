@@ -145,8 +145,10 @@ input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 .note.lit .nlab{color:#3a2002;font-weight:600}
 .note.past{opacity:.3}
 .breath{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--air);opacity:.45;pointer-events:none}
-.roll.hmode .note,.roll.hmode .breath,.roll.hmode .lane,.roll.hmode .cguide,
-.roll.hmode .beat,.roll.hmode .nowline{display:none!important}
+/* контур рисуется поверх водопада; падающие ноты слегка приглушаем для читаемости */
+.roll.hmode .note{opacity:.32}
+.roll.hmode .note.lit{opacity:.85}
+.roll.hmode .breath{opacity:.2}
 .breath::after{content:"вдох";position:absolute;right:10px;top:-16px;font-size:11px;color:var(--air);letter-spacing:.4px}
 
 .nowbox{position:absolute;top:10px;left:10px;z-index:5;display:flex;align-items:center;gap:12px;
@@ -194,6 +196,7 @@ input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 
 #pc{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
 #fx{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
+#hv{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
 .sung b{color:var(--good)}
 .sung.off b{color:var(--bad)}
 .sung #sungCents{color:var(--muted);font-size:11px}
@@ -271,6 +274,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     <div class="nowline"></div>
     <canvas id="fx"></canvas>
     <canvas id="pc"></canvas>
+    <canvas id="hv"></canvas>
     <div class="countin" id="countin" style="display:none">4</div>
   </div>
 
@@ -600,7 +604,8 @@ function tick(){
     accIdx++;
   }
   for(const [m,rel] of active){if(q>=rel){if(keyEl[m])keyEl[m].classList.remove('on');active.delete(m);}}
-  if(hView) drawHView(q); else {render(q); drawFx(performance.now());}
+  render(q); drawFx(performance.now());
+  if(hView) drawHView(q);
   updNoteBox(q); updHud(q);
   if(loopPhrase&&q>=phraseEnd(loopP)-0.02){jumpTo(PHR[loopP]);raf=requestAnimationFrame(tick);return;}
   if(q>totalQ+1){reset();return;}
@@ -1182,14 +1187,15 @@ function sizeCanvas(){
   pc.width=Math.round(roll.clientWidth*d);
   pc.height=Math.round(roll.clientHeight*d);
   fx.width=pc.width; fx.height=pc.height;
+  hv.width=pc.width; hv.height=pc.height;
 }
 
 /* ---- искры-угольки при зажигании ноты ---- */
-const fx=$('fx');
+const fx=$('fx'), hv=$('hv');
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let parts=[], lastFxT=0;
 function spawnEmbers(midi){
-  if(reducedMotion||hView||fx.width===0) return;
+  if(reducedMotion||fx.width===0) return;
   const d=window.devicePixelRatio||1;
   const x=xPct(midi)*fx.width/100, y=fx.height-NOWLINE*d;
   for(let i=0;i<10;i++){
@@ -1218,7 +1224,7 @@ function clearFx(){parts.length=0; if(fx.width) fx.getContext('2d').clearRect(0,
 
 /* ---- «контур»: ноты слева направо, голос — линией поверх (как в Erol Singer's Studio) ---- */
 let hView=false;
-const HV_PAST=2, HV_FUT=8; // видимое окно в четвертях: сколько позади и впереди
+const HV_PAGE=8; // четвертей на «страницу»: ноты стоят, бегунок и голос движутся слева направо
 function rr(ctx,x,y,w,h,r){
   r=Math.min(r,w/2,h/2);
   ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
@@ -1226,28 +1232,34 @@ function rr(ctx,x,y,w,h,r){
 }
 function drawHView(q){
   const d=window.devicePixelRatio||1;
-  if(pc.width!==Math.round(roll.clientWidth*d)||pc.height!==Math.round(roll.clientHeight*d)) sizeCanvas();
-  const ctx=pc.getContext('2d'), W=pc.width, H=pc.height;
+  if(hv.width!==Math.round(roll.clientWidth*d)||hv.height!==Math.round(roll.clientHeight*d)) sizeCanvas();
+  const ctx=hv.getContext('2d'), W=hv.width, H=hv.height;
   ctx.clearRect(0,0,W,H);
   const lo=kLOW-1, hi=kHIGH+1, span=Math.max(1,hi-lo);
   const pad=10*d;
   const yOf=m=>pad+(hi-m)/span*(H-2*pad);
   const semiH=(H-2*pad)/span;
-  const xOf=t=>((t-q+HV_PAST)/(HV_PAST+HV_FUT))*W;
-  // сетка: линия на каждой белой ноте, подпись слева
+  const pageStart=Math.floor(q/HV_PAGE)*HV_PAGE;
+  const xOf=t=>((t-pageStart)/HV_PAGE)*W;
+  // вертикальные метки долей внутри страницы (каждая 4-я ярче)
+  for(let b=0;b<=HV_PAGE;b++){
+    ctx.fillStyle=((pageStart+b)%4===0)?'#ffffff14':'#ffffff08';
+    ctx.fillRect(xOf(pageStart+b)-0.5*d,0,1*d,H);
+  }
+  // сетка высот: линия на каждой белой ноте, подпись слева
   ctx.font=(10*d)+'px "Golos Text",sans-serif'; ctx.textBaseline='bottom';
   for(let m=Math.ceil(lo);m<=hi;m++){
     if(isBlack(m)) continue;
     const y=yOf(m);
-    ctx.fillStyle=(m%12===0)?'#ffffff22':'#ffffff0d';
+    ctx.fillStyle=(m%12===0)?'#ffffff1e':'#ffffff0b';
     ctx.fillRect(0,y,W,1*d);
-    ctx.fillStyle='#8d92ab99';
+    ctx.fillStyle='#8d92ab88';
     ctx.fillText(rusOf(m)+(Math.floor(m/12)-1),6*d,y-2*d);
   }
-  // отрезки нот мелодии
+  // статичные отрезки нот текущей страницы
   for(let i=0;i<MELODY.length;i++){
     const [s,dur,m]=MELODY[i];
-    if(s+dur<q-HV_PAST||s>q+HV_FUT) continue;
+    if(s+dur<pageStart||s>pageStart+HV_PAGE) continue;
     const x1=Math.max(-4*d,xOf(s)), x2=Math.min(W+4*d,xOf(s+dur));
     const h=Math.max(4*d,semiH*0.72), y=yOf(m)-h/2;
     const sounding=s<=q&&q<s+dur, past=s+dur<=q;
@@ -1255,25 +1267,25 @@ function drawHView(q){
     if(sounding){
       ctx.fillStyle='#ffcf6b'; ctx.shadowColor='#ff9d52'; ctx.shadowBlur=16*d;
     } else if(past){ ctx.fillStyle='#4d568f66'; }
-    else { ctx.fillStyle=isBlack(m)?'#8f7c54':'#5d67ab'; }
+    else { ctx.fillStyle=isBlack(m)?'#a68b57':'#6b76c0'; }
     ctx.fill(); ctx.shadowBlur=0;
   }
-  // бегунок «сейчас»
+  // бегущая линия времени
   const px=xOf(q);
   const g=ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#ff9d5200'); g.addColorStop(0.5,'#ff9d52aa'); g.addColorStop(1,'#ff9d5200');
+  g.addColorStop(0,'#ff9d5200'); g.addColorStop(0.5,'#ff9d52bb'); g.addColorStop(1,'#ff9d5200');
   ctx.fillStyle=g; ctx.fillRect(px-1*d,0,2*d,H);
-  // трасса голоса
+  // след голоса: остаётся на странице позади бегунка
   if(micOn&&pitchSamples.length){
     const nowT=performance.now(), qps=qPerSec();
     ctx.lineWidth=2*d;
     let prev=null;
     for(const s of pitchSamples){
       const sq=(s.q!=null)?s.q:q-(nowT-s.t)/1000*qps;
-      if(sq<q-HV_PAST||sq>q+0.05){prev=null;continue;}
+      if(sq<pageStart||sq>q+0.05){prev=null;continue;}
       const x=xOf(sq), y=yOf(s.mf);
       const good=s.diff!=null&&Math.abs(s.diff)<=0.5;
-      if(prev&&Math.abs(prev.y-y)<semiH*3&&x-prev.x<W*0.06){
+      if(prev&&Math.abs(prev.y-y)<semiH*3&&x-prev.x<W*0.08){
         ctx.strokeStyle=good?'#8ef0b0cc':'#79cfffcc';
         ctx.beginPath(); ctx.moveTo(prev.x,prev.y); ctx.lineTo(x,y); ctx.stroke();
       }
@@ -1281,9 +1293,9 @@ function drawHView(q){
     }
     const last=pitchSamples[pitchSamples.length-1];
     if(last&&performance.now()-last.t<200){
-      const lq=(last.q!=null)?last.q:q, x=Math.min(px,xOf(lq)), y=yOf(last.mf);
+      const lq=(last.q!=null)?Math.min(last.q,q):q, y=yOf(last.mf);
       const good=last.diff!=null&&Math.abs(last.diff)<=0.5;
-      ctx.beginPath(); ctx.arc(x,y,4*d,0,7);
+      ctx.beginPath(); ctx.arc(xOf(lq),y,4*d,0,7);
       ctx.fillStyle=good?'#8ef0b0':'#79cfff';
       ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=12*d;
       ctx.fill(); ctx.shadowBlur=0;
@@ -1295,12 +1307,8 @@ function setHView(on){
   $('hvBtn').classList.toggle('on',on);
   roll.classList.toggle('hmode',on);
   try{localStorage.setItem('vocalassist.hview',on?'1':'0');}catch(e){}
-  clearFx();
   if(on) drawHView(playing?nowQ():startQ);
-  else{
-    if(pc.width) pc.getContext('2d').clearRect(0,0,pc.width,pc.height);
-    render(startQ); drawPitch();
-  }
+  else if(hv.width) hv.getContext('2d').clearRect(0,0,hv.width,hv.height);
 }
 $('hvBtn').onclick=()=>setHView(!hView);
 function detectPitch(buf,sr){
@@ -1442,8 +1450,8 @@ function micLoop(){
     $('sungCents').textContent=(cents>0?'+':'')+cents+'¢';
     $('sungBox').classList.toggle('off', diff!=null&&Math.abs(diff)>0.5);
   } else lastMf.length=0;
-  if(hView){ if(!playing) drawHView(startQ); }
-  else drawPitch();
+  drawPitch();
+  if(hView&&!playing) drawHView(startQ);
   micRaf=requestAnimationFrame(micLoop);
 }
 $('micBtn').onclick=micToggle;
@@ -1467,7 +1475,7 @@ sizeCanvas();
 loadRepoList();
 preloadSfScripts(); // сэмплы инструментов качаются в фоне, к первому нажатию «Петь» обычно уже готовы
 if(localStorage.getItem('vocalassist.hview')==='1') setHView(true);
-window.addEventListener('resize',()=>{sizeCanvas();if(!playing){render(startQ);hView?drawHView(startQ):drawPitch();}});
+window.addEventListener('resize',()=>{sizeCanvas();if(!playing){render(startQ);drawPitch();if(hView)drawHView(startQ);}});
 </script>
 </body>
 </html>
