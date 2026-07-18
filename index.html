@@ -945,14 +945,15 @@ function updateLyrics(q){
       hf.style.width=(pct*100).toFixed(1)+'%';
     }
   }
-  // держим текущую строку в видимой зоне
-  if(curEl){
-    const ln=curEl.parentElement;
-    if(ln!==lyrPrevLine){
-      lyrPrevLine=ln;
-      const box=$('lyrics');
-      box.scrollTop=Math.max(0,ln.offsetTop-box.clientHeight/2+ln.offsetHeight/2);
-    }
+  // прокрутка к строке — ЗАРАНЕЕ, за ~1.5 доли до её первого слога, и плавно,
+  // чтобы строка не прыгала в момент, когда пора вступать
+  let targetLn=curEl?curEl.parentElement:null;
+  const nxtSp=lyrIdx<LYR.length?lyrSpanMap[lyrIdx]:null;
+  if(nxtSp&&LYR[lyrIdx][0]-q<=1.5) targetLn=nxtSp.parentElement;
+  if(targetLn&&targetLn!==lyrPrevLine){
+    lyrPrevLine=targetLn;
+    const box=$('lyrics');
+    box.scrollTo({top:Math.max(0,targetLn.offsetTop-box.clientHeight/2+targetLn.offsetHeight/2), behavior:'smooth'});
   }
   // заливка-прогресс на следующем слоге: заполняется за последние 2 доли
   const nxt=lyrIdx<LYR.length?lyrSpanMap[lyrIdx]:null;
