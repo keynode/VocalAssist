@@ -149,6 +149,11 @@ input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 .roll.hmode .note{opacity:.32}
 .roll.hmode .note.lit{opacity:.85}
 .roll.hmode .breath{opacity:.2}
+/* водопад выключен совсем */
+.roll.nowf .note,.roll.nowf .breath,.roll.nowf .lane,.roll.nowf .cguide,
+.roll.nowf .beat,.roll.nowf .nowline{display:none!important}
+/* контур без водопада — приглушение не нужно */
+.roll.nowf .note{opacity:1}
 .breath::after{content:"вдох";position:absolute;right:10px;top:-16px;font-size:11px;color:var(--air);letter-spacing:.4px}
 
 .nowbox{position:absolute;top:10px;left:10px;z-index:5;display:flex;align-items:center;gap:12px;
@@ -242,6 +247,7 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
     <button id="phLoop" class="tgl" title="Повторять фразу (L)">🔁 повтор</button>
     <button id="legato" class="tgl on">легато</button>
     <button id="micBtn" class="tgl" title="Показывать, какую ноту ты поёшь">🎙 микрофон</button>
+    <button id="wfBtn" class="tgl on" title="Падающие ноты (водопад)">⬇ водопад</button>
     <button id="hvBtn" class="tgl" title="Контур: ноты слева направо по высоте, голос — линией поверх">📈 контур</button>
     <button id="fileBtn" title="Открыть файл .mxl или .musicxml">📂 ноты</button>
     <input id="fileInp" type="file" accept=".mxl,.musicxml,.xml,.mid,.midi" style="display:none">
@@ -1197,7 +1203,7 @@ const fx=$('fx'), hv=$('hv');
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let parts=[], lastFxT=0;
 function spawnEmbers(midi){
-  if(reducedMotion||fx.width===0) return;
+  if(reducedMotion||!wfView||fx.width===0) return;
   const d=window.devicePixelRatio||1;
   const x=xPct(midi)*fx.width/100, y=fx.height-NOWLINE*d;
   for(let i=0;i<10;i++){
@@ -1314,6 +1320,17 @@ function setHView(on){
   else if(hv.width) hv.getContext('2d').clearRect(0,0,hv.width,hv.height);
 }
 $('hvBtn').onclick=()=>setHView(!hView);
+
+/* ---- водопад (падающие ноты) — тоже опционален ---- */
+let wfView=true;
+function setWfView(on){
+  wfView=on;
+  $('wfBtn').classList.toggle('on',on);
+  roll.classList.toggle('nowf',!on);
+  try{localStorage.setItem('vocalassist.wfview',on?'1':'0');}catch(e){}
+  if(!on) clearFx();
+}
+$('wfBtn').onclick=()=>setWfView(!wfView);
 function detectPitch(buf,sr){
   const N=buf.length;
   let rms=0, e0=0;
@@ -1478,6 +1495,7 @@ sizeCanvas();
 loadRepoList();
 preloadSfScripts(); // сэмплы инструментов качаются в фоне, к первому нажатию «Петь» обычно уже готовы
 if(localStorage.getItem('vocalassist.hview')==='1') setHView(true);
+if(localStorage.getItem('vocalassist.wfview')==='0') setWfView(false);
 window.addEventListener('resize',()=>{sizeCanvas();if(!playing){render(startQ);drawPitch();if(hView)drawHView(startQ);}});
 </script>
 </body>
