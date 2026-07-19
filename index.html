@@ -533,6 +533,20 @@ function rebuild(){
   });
   const lo=Math.min(...mns), hi=Math.max(...mns);
   $('rangeInfo').textContent=t('range')+' '+noteFull(lo)+' — '+noteFull(hi);
+  // клик/тап по клавише — сыграть ноту
+  Object.entries(keyEl).forEach(([m,k])=>{
+    k.style.cursor='pointer'; k.style.touchAction='manipulation';
+    k.addEventListener('pointerdown',e=>{e.preventDefault(); pressKey(+m);});
+  });
+}
+let keyHold=new Map();
+function pressKey(m){
+  unlockMedia(); initAudio(); if(ac.state==='suspended') ac.resume();
+  playVox(m, 0.6);
+  const k=keyEl[m]; if(!k) return;
+  k.classList.add('on');
+  clearTimeout(keyHold.get(m));
+  keyHold.set(m, setTimeout(()=>{ if(!active.has(m)) k.classList.remove('on'); }, 380));
 }
 function xForMidi(m){
   if(!isBlack(m)){const i=whites.indexOf(m);return (i+0.5)*wW;}
