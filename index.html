@@ -535,18 +535,35 @@ function rebuild(){
   $('rangeInfo').textContent=t('range')+' '+noteFull(lo)+' — '+noteFull(hi);
   // клик/тап по клавише — сыграть ноту
   Object.entries(keyEl).forEach(([m,k])=>{
+    const midi=+m;
     k.style.cursor='pointer'; k.style.touchAction='manipulation';
-    k.addEventListener('pointerdown',e=>{e.preventDefault(); pressKey(+m);});
+    k.setAttribute('role','button'); k.tabIndex=0;
+    k.setAttribute('aria-label',noteFull(midi));
+    k.addEventListener('pointerdown',e=>{
+      if(e.button!==0) return;
+      e.preventDefault(); pressKey(midi);
+    });
+    k.addEventListener('keydown',e=>{
+      if((e.code!=='Enter'&&e.code!=='Space')||e.repeat) return;
+      e.preventDefault(); e.stopPropagation(); pressKey(midi);
+    });
+    updateKeyHighlight(midi);
   });
 }
-let keyHold=new Map();
+const keyHold=new Map(), manualKeys=new Set();
+function updateKeyHighlight(m){
+  const k=keyEl[m];
+  if(k) k.classList.toggle('on',manualKeys.has(m)||active.has(m));
+}
 function pressKey(m){
   unlockMedia(); initAudio(); if(ac.state==='suspended') ac.resume();
   playVox(m, 0.6);
-  const k=keyEl[m]; if(!k) return;
-  k.classList.add('on');
+  if(!keyEl[m]) return;
+  manualKeys.add(m); updateKeyHighlight(m);
   clearTimeout(keyHold.get(m));
-  keyHold.set(m, setTimeout(()=>{ if(!active.has(m)) k.classList.remove('on'); }, 380));
+  keyHold.set(m, setTimeout(()=>{
+    keyHold.delete(m); manualKeys.delete(m); updateKeyHighlight(m);
+  }, 380));
 }
 function xForMidi(m){
   if(!isBlack(m)){const i=whites.indexOf(m);return (i+0.5)*wW;}
@@ -676,7 +693,12 @@ function nowQ(){return startQ+(ac.currentTime-startAcTime)*qPerSec();}
 function idxFor(arr,q){let i=0;while(i<arr.length&&arr[i][0]<q-1e-6)i++;return i;}
 function phraseAt(q){let p=0;for(let i=0;i<PHR.length;i++)if(q>=PHR[i]-1e-6)p=i;return p;}
 function phraseEnd(p){return p+1<PHR.length?PHR[p+1]:totalQ+1;}
-function clearKeys(){active.clear();Object.values(keyEl).forEach(k=>k.classList.remove('on'));}
+function clearKeys(){
+  active.clear(); manualKeys.clear();
+  for(const timer of keyHold.values()) clearTimeout(timer);
+  keyHold.clear();
+  Object.values(keyEl).forEach(k=>k.classList.remove('on'));
+}
 function updHud(q){
   const ph=phraseAt(q)+1;
   $('phNum').textContent=ph; $('phNum2').textContent=ph;
@@ -754,7 +776,7 @@ function tick(){
   while(curIdx<MELODY.length&&MELODY[curIdx][0]<=q){
     const [s,d,m]=MELODY[curIdx];
     playVox(m,d/qPerSec());
-    if(keyEl[m]){keyEl[m].classList.add('on');active.set(m,s+d);}
+    active.set(m,Math.max(active.get(m)??-Infinity,s+d)); updateKeyHighlight(m);
     spawnEmbers(m);
     curIdx++;
   }
@@ -763,7 +785,7 @@ function tick(){
     playAcc(m+TRANSP,d/qPerSec(),cat);
     accIdx++;
   }
-  for(const [m,rel] of active){if(q>=rel){if(keyEl[m])keyEl[m].classList.remove('on');active.delete(m);}}
+  for(const [m,rel] of active){if(q>=rel){active.delete(m);updateKeyHighlight(m);}}
   render(q); drawFx(performance.now());
   if(hView) drawHView(q);
   updNoteBox(q); updHud(q); updateLyrics(q);
