@@ -1888,7 +1888,7 @@ async function micToggle(){
   try{
     initAudio(); if(ac.state==='suspended') await ac.resume();
     micStream=await navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:true, noiseSuppression:false, autoGainControl:true}
+      audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}
     });
   }catch(err){
     toast(t('micUnavail')+': '+(err.name==='NotAllowedError'?t('micDenied'):err.message));
@@ -1969,17 +1969,6 @@ function lastWindow(n){
   return out;
 }
 function detectTick(){
-  // нейросетевой движок: окно ~170 мс, инференс асинхронно (пропускаем тик, если занят)
-  if(enginePref==='swift'&&sfeState==='ready'){
-    if(sfeBusy) return;
-    const nn=Math.min(ringFilled,8192);
-    if(nn<3072) return;
-    const b=lastWindow(nn);
-    if(!b) return;
-    sfeBusy=true;
-    sfeDetect(b).catch(()=>{}).finally(()=>{sfeBusy=false;});
-    return;
-  }
   let n=(lastF>0&&lastF<160)?4096:2048; // низким нотам — длинное окно
   let buf=lastWindow(n);
   if(!buf&&n===4096) buf=lastWindow(n=2048);
@@ -1988,8 +1977,20 @@ function detectTick(){
   if(!f&&n===2048){const b=lastWindow(4096); if(b){const f4=pitchAny(b); if(f4) f=f4;}}
   if(f) lastF=f;
   processPitch(f);
+  // MPM обновляет индикатор сразу; SwiftF0 только уточняет свежий результат параллельно.
+  if(enginePref==='swift'&&sfeState==='ready'&&!sfeBusy){
+    const nn=Math.min(ringFilled,4096);
+    if(nn<3072) return;
+    const b=lastWindow(nn);
+    if(!b) return;
+    const started=performance.now();
+    sfeBusy=true;
+    sfeDetect(b).then(sf=>{
+      if(micOn&&enginePref==='swift'&&sf>0&&performance.now()-started<=120) processPitch(sf,false);
+    }).catch(()=>{}).finally(()=>{sfeBusy=false;});
+  }
 }
-function processPitch(f){
+function processPitch(f,countScore=true){
   if(!(f>0)){
     if(++silentN>18){trk=null; pendMf=null; pendN=0;}
     return;
@@ -1999,8 +2000,10 @@ function processPitch(f){
   let diff=null;
   if(playing&&curNoteG){
     diff=mf-curNoteG[2];
-    hitT++; if(Math.abs(diff)<=0.5) hitN++;
-    if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
+    if(countScore){
+      hitT++; if(Math.abs(diff)<=0.5) hitN++;
+      if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
+    }
   }
   pitchSamples.push({t:performance.now(), q:playing?nowQ():null, mf, diff});
   if(pitchSamples.length>500) pitchSamples.splice(0,100);
@@ -2060,7 +2063,7 @@ async function sfeDetect(buf){
     x[len-n+i]=v;
     const a=v<0?-v:v; if(a>peak) peak=a;
   }
-  if(peak<0.004){processPitch(0);return;} // тишина — не тратим инференс
+  if(peak<0.004) return 0; // тишина — не тратим инференс
   // медленный AGC вместо по-буферной нормализации (иначе confidence мерцает)
   sfePeak=Math.max(peak, sfePeak*0.995, 0.02);
   const g=1/sfePeak;
@@ -2075,7 +2078,7 @@ async function sfeDetect(buf){
   }
   let f=0;
   if(vals.length){vals.sort((a,b)=>a-b); f=vals[vals.length>>1];}
-  processPitch(f);
+  return f;
 }
 function engineLabel(){return enginePref==='swift'?'🧠 SwiftF0':'〰 MPM';}
 $('engBtn').onclick=()=>{
