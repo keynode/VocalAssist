@@ -83,15 +83,30 @@ function extractFunction(name) {
 
 const liveSelection = extractFunction('applyMidiTrackSelection');
 for (const fragment of [
-  'const q=playing?Math.max(nowQ(),0):startQ',
-  'if(playing) pause()',
+  'const wasPlaying=playing',
+  'const q=wasPlaying?Math.max(nowQ(),0):startQ',
   'rebuildMidiSong(CURRENT_SONG,keys)',
   'buildLyrics()',
   'buildTicks()',
   'rebuild()',
-  'setPos(Math.min(q,totalQ))',
+  'const boundedQ=Math.min(wasPlaying?Math.max(nowQ(),q):q,totalQ)',
+  'if(wasPlaying){',
+  'startQ=boundedQ',
+  'startAcTime=ac.currentTime',
+  'curIdx=idxAfter(MELODY,boundedQ)',
+  'accIdx=idxAfter(ACC,boundedQ)',
+  'else setPos(boundedQ)',
 ]) {
   assert(liveSelection.includes(fragment), `live MIDI selection must include: ${fragment}`);
 }
+for (const forbidden of ['pause()', 'stopSound()', 'requestAnimationFrame', 'playing=false']) {
+  assert(!liveSelection.includes(forbidden), `live MIDI selection must not include: ${forbidden}`);
+}
+
+const idxAfter = extractFunction('idxAfter');
+assert(
+  idxAfter.includes('arr[i][0]<=q+1e-6'),
+  'live MIDI selection must resume strictly after the captured instant to avoid replaying an onset',
+);
 
 console.log('MIDI track selector UI checks passed');

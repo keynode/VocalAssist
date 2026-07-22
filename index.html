@@ -172,13 +172,6 @@ html[lang="en"] .breath::after{content:"breath"}
 .nowbox .nxt{font-size:13px;color:var(--muted);border-left:1px solid var(--line);padding-left:12px}
 .nowbox .nxt b{color:var(--air);font-weight:600}
 
-.countin{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;pointer-events:none;
-  font-family:"Unbounded",sans-serif;font-weight:700;font-size:88px;color:var(--flame);
-  text-shadow:0 0 40px var(--ember),0 0 90px #ff9d5266;
-  animation:pulse 1s ease-in-out infinite}
-@keyframes pulse{50%{transform:scale(1.07)}}
-@media (prefers-reduced-motion:reduce){.countin{animation:none}}
-
 /* ---------- keyboard ---------- */
 .keys{position:relative;height:140px;user-select:none}
 .keys::before{ /* «фетровая» полоса над клавишами — янтарная, в тон костра */
@@ -304,7 +297,6 @@ html[lang="en"] .breath::after{content:"breath"}
   .nowbox .cur{font-size:18px}
   .nowbox .cur small{font-size:10px}
   #lyrics{font-size:13px;bottom:60px;max-height:6.2em;padding:6px 10px}
-  .countin{font-size:64px}
   input[type=range]{width:90px}
 }
 @media (max-width:360px){
@@ -416,7 +408,6 @@ html[lang="en"] .breath::after{content:"breath"}
     <canvas id="pc"></canvas>
     <canvas id="hv"></canvas>
     <div id="lyrics" style="display:none"></div>
-    <div class="countin" id="countin" style="display:none">4</div>
   </div>
 
   <div class="keys" id="keys"></div>
@@ -484,7 +475,7 @@ ru:{
   micPitchy:'Микрофон включён · детектор Pitchy', micBasic:'Микрофон включён · встроенный детектор',
   micDenied:'нет разрешения', micUnavail:'Микрофон недоступен', micNoHttps:'Микрофон работает только по HTTPS — открой страницу с https-адреса',
   micUnsup:'Браузер не поддерживает микрофон',
-  footerHtml:'Счёт «4-3-2-1» перед стартом — вступай, когда загорится первая клавиша. Голубой пунктир — вдох. «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. Кнопки «Тон −/+» транспонируют всё на полутон за шаг. «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту, зелёный = попал, 🎯 — процент попаданий. &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала'
+  footerHtml:'Воспроизведение начинается сразу — вступай, когда загорится первая клавиша. Голубой пунктир — вдох. «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. Кнопки «Тон −/+» транспонируют всё на полутон за шаг. «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту, зелёный = попал, 🎯 — процент попаданий. &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала'
 },
 en:{
   subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
@@ -505,7 +496,7 @@ en:{
   micPitchy:'Microphone on · Pitchy detector', micBasic:'Microphone on · built-in detector',
   micDenied:'permission denied', micUnavail:'Microphone unavailable', micNoHttps:'Microphone needs HTTPS — open the https:// address',
   micUnsup:'This browser does not support microphone input',
-  footerHtml:'A “4-3-2-1” count-in plays before the start — come in when the first key lights up. Blue dashes mark breaths. Set “🎤” to zero for a backing track: accompaniment and highlights stay. “Key −/+” transposes everything by a semitone per step. “📂 files” opens .mxl, .musicxml and .mid (MIDI). With “🎙 microphone” sing in headphones — the beam shows your note, green = on pitch, 🎯 — hit percentage. &nbsp;·&nbsp; <kbd>Space</kbd> sing/pause · <kbd>←</kbd><kbd>→</kbd> phrases · <kbd>L</kbd> loop phrase · <kbd>R</kbd> restart'
+  footerHtml:'Playback starts immediately — come in when the first key lights up. Blue dashes mark breaths. Set “🎤” to zero for a backing track: accompaniment and highlights stay. “Key −/+” transposes everything by a semitone per step. “📂 files” opens .mxl, .musicxml and .mid (MIDI). With “🎙 microphone” sing in headphones — the beam shows your note, green = on pitch, 🎯 — hit percentage. &nbsp;·&nbsp; <kbd>Space</kbd> sing/pause · <kbd>←</kbd><kbd>→</kbd> phrases · <kbd>L</kbd> loop phrase · <kbd>R</kbd> restart'
 }};
 const t=k=>(T[LANG]&&T[LANG][k])||T.ru[k]||k;
 const octOf=m=>Math.floor(m/12)-1;
@@ -771,22 +762,14 @@ function playAcc(m,dur,cat){
   g.gain.exponentialRampToValueAtTime(peak,t+0.01);
   g.gain.exponentialRampToValueAtTime(0.0001,t+decay);
 }
-function click(hi){
-  const t=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
-  o.type='square'; o.frequency.value=hi?1400:900;
-  o.connect(g); g.connect(master);
-  g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.09);
-  o.start(t); o.stop(t+0.1);
-}
-
 /* ---- transport ---- */
 let bpm=100, playing=false, startAcTime=0, startQ=0, curIdx=0, accIdx=0, raf=0, loopPhrase=false;
 const active=new Map();
-const countEl=$('countin');
 function qPerSec(){return bpm/60;}
 function fmt(s){s=Math.max(0,s|0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 function nowQ(){return startQ+(ac.currentTime-startAcTime)*qPerSec();}
 function idxFor(arr,q){let i=0;while(i<arr.length&&arr[i][0]<q-1e-6)i++;return i;}
+function idxAfter(arr,q){let i=0;while(i<arr.length&&arr[i][0]<=q+1e-6)i++;return i;}
 function phraseAt(q){let p=0;for(let i=0;i<PHR.length;i++)if(q>=PHR[i]-1e-6)p=i;return p;}
 function phraseEnd(p){return p+1<PHR.length?PHR[p+1]:totalQ+1;}
 function clearKeys(){
@@ -810,7 +793,7 @@ function setPos(q){
   if(hView) drawHView(q);
   if(typeof seekLyrics==='function'&&LYR) seekLyrics(q);
 }
-function reset(){cancelAnimationFrame(raf);playing=false;stopSound();countEl.style.display='none';
+function reset(){cancelAnimationFrame(raf);playing=false;stopSound();
   updatePlayButton();setPos(0);
   $('curNN').textContent='—';$('curSub').textContent=t('curnote');$('nextNN').textContent='—';}
 
@@ -868,14 +851,9 @@ function updNoteBox(q){
   $('curSub').textContent=cur?noteFull(cur[2]):t('curnote');
   $('nextNN').textContent=next?noteFull(next[2]):'—';
 }
-let startQ0Play=0, loopP=0;
+let loopP=0;
 function tick(){
   const q=nowQ();
-  if(q<startQ0Play){
-    countEl.style.display='flex'; countEl.textContent=Math.ceil(startQ0Play-q);
-    raf=requestAnimationFrame(tick); return;
-  }
-  countEl.style.display='none';
   while(curIdx<MELODY.length&&MELODY[curIdx][0]<=q){
     const [s,d,m]=MELODY[curIdx];
     playVox(m,d/qPerSec());
@@ -896,23 +874,18 @@ function tick(){
   if(q>totalQ+1){reset();return;}
   raf=requestAnimationFrame(tick);
 }
-function play(withCount=true){
+function play(){
   unlockMedia(); initAudio(); if(ac.state==='suspended')ac.resume();
   playing=true; updatePlayButton();
   hitN=0; hitT=0; $('hitPct').textContent='—';
-  const q0=startQ;
-  startQ0Play=q0;
-  if(withCount){
-    startQ=q0-4; startAcTime=ac.currentTime;
-    for(let i=0;i<4;i++) setTimeout(()=>{if(playing)click(i===3);}, i/qPerSec()*1000);
-  } else { startAcTime=ac.currentTime; }
-  curIdx=idxFor(MELODY,q0); accIdx=idxFor(ACC,q0);
+  startAcTime=ac.currentTime;
+  curIdx=idxFor(MELODY,startQ); accIdx=idxFor(ACC,startQ);
   raf=requestAnimationFrame(tick);
 }
 function pause(){startQ=Math.max(nowQ(),0);cancelAnimationFrame(raf);playing=false;stopSound();
-  countEl.style.display='none';updatePlayButton();}
+  updatePlayButton();}
 function jumpTo(q){
-  clearKeys(); stopSound(); startQ=q; startQ0Play=q;
+  clearKeys(); stopSound(); startQ=q;
   curIdx=idxFor(MELODY,q); accIdx=idxFor(ACC,q);
   pitchSamples.length=0;
   if(ac)startAcTime=ac.currentTime;
@@ -943,13 +916,13 @@ tl.addEventListener('pointerdown',e=>{tlSeek(e);
 
 /* ---- controls ---- */
 function updDur(){$('dur').textContent=fmt(totalQ/qPerSec());}
-$('play').onclick=()=>{playing?pause():play(true);};
+$('play').onclick=()=>{playing?pause():play();};
 $('restart').onclick=()=>{initAudio();reset();};
 $('tempo').oninput=e=>{
   const q=playing?nowQ():startQ;
   bpm=+e.target.value;$('tempoVal').textContent=bpm;updDur();
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), bpm}; saveLibDebounced();
-  if(playing){startQ=Math.max(q,startQ0Play);startQ0Play=startQ;startAcTime=ac.currentTime;}
+  if(playing){startQ=Math.max(q,0);startAcTime=ac.currentTime;}
   else updHud(startQ);
 };
 function setTransp(v){
@@ -960,7 +933,7 @@ function setTransp(v){
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), transp:TRANSP}; saveLibDebounced();
   const q=playing?nowQ():startQ;
   MELODY=buildMelody(); rebuild();
-  if(playing){startQ=Math.max(q,0);startQ0Play=startQ;startAcTime=ac.currentTime;
+  if(playing){startQ=Math.max(q,0);startAcTime=ac.currentTime;
     curIdx=idxFor(MELODY,startQ);accIdx=idxFor(ACC,startQ);}
   else setPos(startQ);
 }
@@ -974,7 +947,7 @@ function setVoct(v){ // октава только вокального трек�
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), voct:VOCT}; saveLibDebounced();
   const q=playing?nowQ():startQ;
   MELODY=buildMelody(); rebuild();
-  if(playing){startQ=Math.max(q,0);startQ0Play=startQ;startAcTime=ac.currentTime;
+  if(playing){startQ=Math.max(q,0);startAcTime=ac.currentTime;
     curIdx=idxFor(MELODY,startQ);accIdx=idxFor(ACC,startQ);}
   else setPos(startQ);
   if(hView) drawHView(playing?nowQ():startQ);
@@ -1677,8 +1650,8 @@ function applyMidiTrackSelection(nextKeys){
   if(!(CURRENT_SONG.midiGroups&&CURRENT_SONG.midiGroups.length)) return;
   let keys=null;
   if(Array.isArray(nextKeys)&&nextKeys.length) keys=validateMidiTrackKeys(CURRENT_SONG,nextKeys).keys;
-  const q=playing?Math.max(nowQ(),0):startQ;
-  if(playing) pause();
+  const wasPlaying=playing;
+  const q=wasPlaying?Math.max(nowQ(),0):startQ;
   const pref={...(LIB.prefs[curSongId]||{})};
   if(keys) pref.midiTracks=keys; else delete pref.midiTracks;
   LIB.prefs[curSongId]=pref;
@@ -1688,11 +1661,22 @@ function applyMidiTrackSelection(nextKeys){
   MELODY=buildMelody();
   $('phTotal').textContent=PHR.length;
   buildLyrics();
-  loopP=phraseAt(Math.min(q,totalQ));
   buildTicks();
   rebuild();
   updDur();
-  setPos(Math.min(q,totalQ));
+  const boundedQ=Math.min(wasPlaying?Math.max(nowQ(),q):q,totalQ);
+  loopP=phraseAt(boundedQ);
+  if(wasPlaying){
+    startQ=boundedQ; startAcTime=ac.currentTime;
+    curIdx=idxAfter(MELODY,boundedQ); accIdx=idxAfter(ACC,boundedQ);
+    clearKeys();
+    for(const [s,d,m] of activeTargetNotes(MELODY,boundedQ)){
+      active.set(m,Math.max(active.get(m)??-Infinity,s+d)); updateKeyHighlight(m);
+    }
+    updHud(boundedQ); render(boundedQ); updNoteBox(boundedQ);
+    if(hView) drawHView(boundedQ);
+    if(typeof seekLyrics==='function'&&LYR) seekLyrics(boundedQ);
+  }else setPos(boundedQ);
   saveLibDebounced();
   renderMidiTrackControls();
   renderShelf();
@@ -2313,7 +2297,7 @@ window.addEventListener('keydown',e=>{
     }
   }
   if(e.target.tagName==='INPUT'||e.target.classList?.contains('scard')) return;
-  if(e.code==='Space'){e.preventDefault();if(e.target.tagName==='BUTTON')e.target.blur();playing?pause():play(true);}
+  if(e.code==='Space'){e.preventDefault();if(e.target.tagName==='BUTTON')e.target.blur();playing?pause():play();}
   else if(e.code==='ArrowLeft'){e.preventDefault();phraseStep(-1);}
   else if(e.code==='ArrowRight'){e.preventDefault();phraseStep(1);}
   else if(e.code==='KeyL'){$('phLoop').click();}
