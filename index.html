@@ -258,10 +258,28 @@ html[lang="en"] .breath::after{content:"breath"}
   padding:9px 11px;background:var(--panel2);border-bottom:1px solid var(--line)}
 .more-head strong{font-family:"Unbounded",sans-serif;font-size:13px;font-weight:500}
 .more-body{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:11px}
+.more-body[hidden]{display:none}
 .more-body>.settings{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .more-body>.settings>.slider{grid-column:1/-1;justify-content:space-between;min-width:0}
 .more-body>.settings>.slider input[type=range]{flex:1;width:auto;min-width:80px}
 .more-body>.settings>button{min-width:0;padding:8px 9px;overflow:hidden;text-overflow:ellipsis}
+.midi-tracks-entry{grid-column:1/-1;width:100%;text-align:left}
+.midi-tracks-view{padding:11px}
+.midi-tracks-view[hidden]{display:none}
+.midi-tracks-toolbar{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.midi-tracks-heading{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px}
+.midi-tracks-heading strong{font-size:13px}
+.midi-tracks-state{color:var(--muted);font-size:11px}
+.midi-track-list{max-height:min(360px,calc(100dvh - 190px));overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px}
+.midi-track-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:center;padding:8px 9px;
+  background:var(--panel);border:1px solid var(--line);border-radius:9px;cursor:pointer}
+.midi-track-row:focus-within{border-color:#7b81c5;box-shadow:0 0 0 2px #7b81c533}
+.midi-track-row input{margin:0}
+.midi-track-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+.midi-track-name{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;font-weight:650}
+.midi-track-name span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.midi-track-meta{color:var(--muted);font-size:10px;line-height:1.35}
+.midi-auto-badge{flex:0 0 auto;color:#ffd166;border:1px solid #7a6333;border-radius:999px;padding:1px 5px;font-size:9px;text-transform:uppercase}
 @media (max-width:760px){
   .brand{font-size:17px}
   .subtitle{display:none}
@@ -332,7 +350,7 @@ html[lang="en"] .breath::after{content:"breath"}
         <strong data-i18n="settings">Настройки</strong>
         <button id="moreClose" class="icon-btn" title="Закрыть">✕</button>
       </div>
-      <div class="more-body">
+      <div class="more-body" id="settingsMain">
         <button id="phLoop" class="tgl" data-i18n="repeat">🔁 повтор</button>
         <button id="legato" class="tgl on" data-i18n="legato">легато</button>
         <button id="wfBtn" class="tgl on" data-i18n="wf">⬇ водопад</button>
@@ -360,11 +378,23 @@ html[lang="en"] .breath::after{content:"breath"}
           <button id="engBtn" title="Детектор высоты: SwiftF0 (нейросеть) / MPM (классика)">🧠 SwiftF0</button>
           <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
           <button id="langBtn" title="Language">🌐 RU</button>
+          <button id="midiTracksBtn" class="midi-tracks-entry" aria-controls="midiTracksView" hidden>🎼 MIDI-дорожки · Авто</button>
         </div>
         <details class="help-details" id="helpDetails">
           <summary data-i18n="help">❔ Справка</summary>
           <div id="helpText"></div>
         </details>
+      </div>
+      <div id="midiTracksView" class="midi-tracks-view" hidden>
+        <div class="midi-tracks-toolbar">
+          <button id="midiTracksBack" class="icon-btn" title="Назад" aria-label="Назад">←</button>
+          <div class="midi-tracks-heading">
+            <strong data-i18n="midiTracks">MIDI-дорожки</strong>
+            <span id="midiTracksState" class="midi-tracks-state">Авто</span>
+          </div>
+          <button id="midiTracksAuto" data-i18n="midiAutomatic">Автоопределение</button>
+        </div>
+        <div id="midiTrackList" class="midi-track-list"></div>
       </div>
     </div>
   </div>
@@ -441,6 +471,9 @@ ru:{
   files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', settings:'Настройки', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
   curnote:'текущая нота', next:'дальше', sing:'пою',
   search:'поиск по названию…', openfile:'📂 открыть файл…',
+  midiTracks:'MIDI-дорожки', midiAuto:'Авто', midiAutomatic:'Автоопределение', midiSelected:'выбрано',
+  midiTrack:'Дорожка', midiChannel:'канал', midiProgram:'программа', midiNotes:'нот', midiBack:'Назад',
+  midiTracksUnavailable:'Сохранённые MIDI-дорожки больше недоступны — включено автоопределение',
   footRepo:'файлы из папки songs/ репозитория появляются здесь сами на всех устройствах',
   kind_builtin:'встроенная', kind_repo:'из репозитория · на всех устройствах', kind_local:'только в этом браузере',
   notloaded:'ещё не загружалась — нажми, чтобы открыть', phrases:'фраз', noacc:'без аккомпанемента',
@@ -459,6 +492,9 @@ en:{
   files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', settings:'Settings', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
   curnote:'current note', next:'next', sing:'singing',
   search:'search by title…', openfile:'📂 open file…',
+  midiTracks:'MIDI tracks', midiAuto:'Auto', midiAutomatic:'Automatic detection', midiSelected:'selected',
+  midiTrack:'Track', midiChannel:'channel', midiProgram:'program', midiNotes:'notes', midiBack:'Back',
+  midiTracksUnavailable:'Saved MIDI tracks are no longer available — automatic detection restored',
   footRepo:'files from the repo folder songs/ appear here automatically on all devices',
   kind_builtin:'built-in', kind_repo:'from repo · on all devices', kind_local:'only in this browser',
   notloaded:'not loaded yet — tap to open', phrases:'phrases', noacc:'no accompaniment',
@@ -502,12 +538,16 @@ function applyLang(){
   $('moreBtn').setAttribute('aria-label',t('settings'));
   $('moreClose').title=t('close');
   $('moreClose').setAttribute('aria-label',t('close'));
+  $('midiTracksBack').title=t('midiBack');
+  $('midiTracksBack').setAttribute('aria-label',t('midiBack'));
+  $('midiTracksAuto').setAttribute('aria-label',t('midiAutomatic'));
   $('noteBtn').textContent=noteStyle==='letters'?'C-D-E':(LANG==='ru'?'До-Ре-Ми':'Do-Re-Mi');
   $('langBtn').textContent='🌐 '+LANG.toUpperCase();
   updCurSongLine();
   rebuild();
   if(!playing){render(startQ); if(typeof hView!=='undefined'&&hView) drawHView(startQ);}
   renderShelf();
+  if(typeof renderMidiTrackControls==='function') renderMidiTrackControls();
   updNoteBox(playing&&ac?nowQ():startQ);
 }
 
@@ -809,17 +849,24 @@ function render(q){
     e.style.display='block'; e.style.top=(rollH*(1-top/LOOK))+'px';
   });
 }
-function updNoteBox(q){
-  let cur=null,next=null;
-  for(let i=Math.max(0,curIdx-6);i<MELODY.length;i++){
-    const [s,d,m]=MELODY[i];
-    if(s<=q&&q<s+d){cur=MELODY[i];}
-    if(s>q){next=MELODY[i];break;}
+function activeTargetNotes(melody,q){return melody.filter(n=>n[0]<=q&&q<n[0]+n[1]);}
+function nearestTargetDiff(midiPitch,targets){
+  if(!targets.length) return null;
+  let diff=midiPitch-targets[0][2];
+  for(let i=1;i<targets.length;i++){
+    const candidate=midiPitch-targets[i][2];
+    if(Math.abs(candidate)<Math.abs(diff)) diff=candidate;
   }
+  return diff;
+}
+function updNoteBox(q){
+  curNotesG=activeTargetNotes(MELODY,q);
+  const cur=curNotesG[0]||null;
+  let next=null;
+  for(const note of MELODY) if(note[0]>q){next=note;break;}
   $('curNN').textContent=cur?noteName(cur[2]):'—';
   $('curSub').textContent=cur?noteFull(cur[2]):t('curnote');
   $('nextNN').textContent=next?noteFull(next[2]):'—';
-  curNoteG=cur;
 }
 let startQ0Play=0, loopP=0;
 function tick(){
@@ -1113,6 +1160,7 @@ try{
 const LAST0=LIB.last; // что было открыто в прошлый раз (до того, как applySong перезапишет)
 let curSongId='builtin';
 const BUILTIN={id:'builtin', title:'Костёр', artist:'Машина Времени', tempo:100, raw:RAW, acc:ACCRAW, phr:PHRASES};
+let CURRENT_SONG=BUILTIN;
 function saveLib(){
   try{localStorage.setItem(LKEY,JSON.stringify(LIB));}
   catch(e){toast(t('storageFull'));}
@@ -1214,7 +1262,7 @@ $('songSearch').oninput=renderSongList;
 /* ---- песни из репозитория (папка songs/) ---- */
 const REPO_API='https://api.github.com/repos/keynode/VocalAssist/contents/songs';
 const RKEY='vocalassist.repo';
-const PARSE_V=4; // версия парсера: при улучшениях разборa кеш пере-парсится
+const PARSE_V=5; // версия парсера: при улучшениях разборa кеш пере-парсится
 let repoSongs=[];
 function repoCache(){try{return JSON.parse(localStorage.getItem(RKEY))||{};}catch(e){return{};}}
 async function loadRepoList(){
@@ -1251,7 +1299,8 @@ async function openRepoSong(rs,auto){
     if(!resp.ok) throw Error('нет сети или файл недоступен');
     const s=await parseSongData(rs.name, await resp.arrayBuffer());
     rs.title=s.title; rs.artist=s.artist;
-    rs.data={raw:s.raw, acc:s.acc, phr:s.phr, tempo:s.tempo||100, lyr:s.lyr||[]};
+    rs.data={raw:s.raw,acc:s.acc,phr:s.phr,tempo:s.tempo||100,lyr:s.lyr||[],
+      midiGroups:s.midiGroups,midiAutoKey:s.midiAutoKey};
     const cache=repoCache();
     cache[rs.name]={sha:rs.sha, v:PARSE_V, file:rs.file, title:rs.title, artist:rs.artist, data:rs.data};
     try{localStorage.setItem(RKEY,JSON.stringify(cache));}catch(e){}
@@ -1259,7 +1308,8 @@ async function openRepoSong(rs,auto){
   // автозагрузка не должна перекрывать песню, которую пользователь уже выбрал сам
   if(auto&&(curSongId!=='builtin'||playing)) return;
   applySong({id:rs.id, title:rs.title, artist:rs.artist, tempo:rs.data.tempo,
-    raw:rs.data.raw, acc:rs.data.acc, phr:rs.data.phr, lyr:rs.data.lyr});
+    raw:rs.data.raw,acc:rs.data.acc,phr:rs.data.phr,lyr:rs.data.lyr,
+    midiGroups:rs.data.midiGroups,midiAutoKey:rs.data.midiAutoKey});
 }
 
 /* ---- загрузка .mxl / .musicxml ---- */
@@ -1516,9 +1566,13 @@ function catOfProg(prog,g){
   }
   return 0;                                     // клавиши и всё остальное
 }
-function splitMidiSong(mid){
-  const cands=mid.groups.filter(g=>g.ch!==9&&g.notes.length>0); // канал 10 (9) — ударные, пропускаем
-  if(!cands.length) throw Error('в MIDI нет нот');
+function midiGroupKey(g){return g.key||g.tr+':'+g.ch;}
+function midiCandidates(mid){
+  return (mid.groups||[]).filter(g=>g.ch!==9&&g.notes&&g.notes.length>0);
+}
+function pickMidiAutoGroup(mid,cands=midiCandidates(mid)){
+  const saved=mid.autoKey&&cands.find(g=>midiGroupKey(g)===mid.autoKey);
+  if(saved) return saved;
   // выбираем вокальный голос: узкий певческий диапазон, мало многоголосия, подходящая высота
   let best=null, bestScore=-1e9;
   for(const g of cands){
@@ -1532,27 +1586,72 @@ function splitMidiSong(mid){
     s-=Math.abs(med-67);
     s-=Math.max(0,rng-19)*0.7;
     s-=(ov/ns.length)*5;
-    if(/voc|melod|voice|голос|вокал|lead|sing|мелод/i.test(mid.trackNames[g.tr]||'')) s+=25;
+    if(/voc|melod|voice|голос|вокал|lead|sing|мелод/i.test((mid.trackNames&&mid.trackNames[g.tr])||g.name||'')) s+=25;
     if(s>bestScore){bestScore=s;best=g;}
   }
-  const vn=[...best.notes].sort((a,b)=>a.q-b.q||b.m-a.m);
-  const vocal=[]; let lastQ=-1e9;
-  for(const n of vn){
-    if(Math.abs(n.q-lastQ)<1e-3) continue;
-    lastQ=n.q; vocal.push({...n});
+  return best;
+}
+function findPolyPhrases(raw,tempo){
+  if(!raw.length) return [0];
+  const thr=Math.max(0.75,0.5*(tempo||100)/60), phr=[raw[0][0]];
+  let onset=raw[0][0], end=raw[0][0]+raw[0][1];
+  for(let i=1;i<raw.length;i++){
+    const n=raw[i];
+    if(Math.abs(n[0]-onset)<1e-3){end=Math.max(end,n[0]+n[1]);continue;}
+    if(n[0]-end>=thr) phr.push(n[0]);
+    onset=n[0]; end=n[0]+n[1];
   }
-  for(let i=0;i<vocal.length-1;i++)
-    if(vocal[i].q+vocal[i].d>vocal[i+1].q) vocal[i].d=Math.max(0.1,round3(vocal[i+1].q-vocal[i].q));
-  const raw=vocal.map(n=>[round3(n.q),round3(n.d),n.m]);
+  return phr;
+}
+function splitMidiSong(mid,selectedKeys=null){
+  const cands=midiCandidates(mid); // канал 10 (9) — ударные, пропускаем
+  if(!cands.length) throw Error('в MIDI нет нот');
+  const best=pickMidiAutoGroup(mid,cands);
+  const requested=Array.isArray(selectedKeys)?new Set(selectedKeys):null;
+  const chosen=requested?cands.filter(g=>requested.has(midiGroupKey(g))):[best];
+  const manual=!!(requested&&chosen.length);
+  let raw;
+  if(manual){
+    raw=chosen.flatMap(g=>g.notes).sort((a,b)=>a.q-b.q||a.m-b.m)
+      .map(n=>[round3(n.q),round3(n.d),n.m]);
+  }else{
+    const vn=[...best.notes].sort((a,b)=>a.q-b.q||b.m-a.m);
+    const vocal=[]; let lastQ=-1e9;
+    for(const n of vn){
+      if(Math.abs(n.q-lastQ)<1e-3) continue;
+      lastQ=n.q; vocal.push({...n});
+    }
+    for(let i=0;i<vocal.length-1;i++)
+      if(vocal[i].q+vocal[i].d>vocal[i+1].q) vocal[i].d=Math.max(0.1,round3(vocal[i+1].q-vocal[i].q));
+    raw=vocal.map(n=>[round3(n.q),round3(n.d),n.m]);
+  }
   const acc=[];
   for(const g of cands){
-    if(g===best) continue;
+    if((manual&&chosen.includes(g))||(!manual&&g===best)) continue;
     const cat=catOfProg(g.prog,g);
     for(const n of g.notes) acc.push([round3(n.q),round3(n.d),n.m,cat]);
   }
   acc.sort((a,b)=>a[0]-b[0]||a[2]-b[2]);
-  return {raw, acc, phr:findPhrases(raw,mid.bpm)};
+  const midiGroups=cands.map(g=>({key:midiGroupKey(g),tr:g.tr,ch:g.ch,
+    name:(mid.trackNames&&mid.trackNames[g.tr])||g.name||'',prog:g.prog,notes:g.notes}));
+  return {raw,acc,phr:manual?findPolyPhrases(raw,mid.bpm):findPhrases(raw,mid.bpm),
+    midiGroups,midiAutoKey:midiGroupKey(best)};
 }
+function validateMidiTrackKeys(song,storedKeys){
+  if(storedKeys==null) return {keys:null,changed:false,staleAll:false};
+  if(!Array.isArray(storedKeys)) return {keys:null,changed:true,staleAll:false};
+  const available=new Set((song.midiGroups||[]).map(midiGroupKey)), seen=new Set(), keys=[];
+  for(const key of storedKeys){
+    if(typeof key==='string'&&available.has(key)&&!seen.has(key)){seen.add(key);keys.push(key);}
+  }
+  const changed=keys.length!==storedKeys.length||keys.some((key,i)=>key!==storedKeys[i]);
+  if(keys.length) return {keys,changed,staleAll:false};
+  return {keys:null,changed:true,staleAll:storedKeys.length>0};
+}
+function midiSource(song){
+  return {groups:song.midiGroups||[],bpm:song.tempo||100,autoKey:song.midiAutoKey};
+}
+function rebuildMidiSong(song,selectedKeys){return splitMidiSong(midiSource(song),selectedKeys);}
 
 /* ---- разбор файла песни любого формата ---- */
 async function parseSongData(name,ab){
@@ -1574,12 +1673,50 @@ async function parseSongData(name,ab){
   s.tempo=score.tempo; s.title=title; s.artist=artist;
   return s;
 }
+function applyMidiTrackSelection(nextKeys){
+  if(!(CURRENT_SONG.midiGroups&&CURRENT_SONG.midiGroups.length)) return;
+  let keys=null;
+  if(Array.isArray(nextKeys)&&nextKeys.length) keys=validateMidiTrackKeys(CURRENT_SONG,nextKeys).keys;
+  const q=playing?Math.max(nowQ(),0):startQ;
+  if(playing) pause();
+  const pref={...(LIB.prefs[curSongId]||{})};
+  if(keys) pref.midiTracks=keys; else delete pref.midiTracks;
+  LIB.prefs[curSongId]=pref;
+  const layers=rebuildMidiSong(CURRENT_SONG,keys);
+  VOCAL=layers.raw; ACC=layers.acc; PHR=layers.phr;
+  calcTotal();
+  MELODY=buildMelody();
+  $('phTotal').textContent=PHR.length;
+  buildLyrics();
+  loopP=phraseAt(Math.min(q,totalQ));
+  buildTicks();
+  rebuild();
+  updDur();
+  setPos(Math.min(q,totalQ));
+  saveLibDebounced();
+  renderMidiTrackControls();
+  renderShelf();
+}
 function applySong(s){
   if(playing) pause();
   curSongId=s.id||'builtin';
-  VOCAL=s.raw; ACC=s.acc; PHR=s.phr;
-  calcTotal();
   const pref=LIB.prefs[curSongId]||{};
+  CURRENT_SONG=s;
+  if(s.midiGroups&&s.midiGroups.length){
+    const resolved=validateMidiTrackKeys(s,pref.midiTracks);
+    if(resolved.changed){
+      const next={...pref};
+      if(resolved.keys) next.midiTracks=resolved.keys; else delete next.midiTracks;
+      LIB.prefs[curSongId]=next;
+      if(resolved.staleAll) toast(t('midiTracksUnavailable'));
+      saveLibDebounced();
+    }
+    const layers=rebuildMidiSong(s,resolved.keys);
+    VOCAL=layers.raw; ACC=layers.acc; PHR=layers.phr;
+  }else{
+    VOCAL=s.raw; ACC=s.acc; PHR=s.phr;
+  }
+  calcTotal();
   bpm=Math.round(Math.min(220,Math.max(40, pref.bpm||s.tempo||100)));
   $('tempo').value=bpm; $('tempoVal').textContent=bpm;
   TRANSP=pref.transp||0;
@@ -1594,6 +1731,7 @@ function applySong(s){
   MELODY=buildMelody();
   loopP=0; buildTicks(); rebuild(); reset(); updDur();
   LIB.last=curSongId; saveLibDebounced();
+  if(typeof renderMidiTrackControls==='function') renderMidiTrackControls();
   renderShelf();
 }
 async function loadFile(file){
@@ -1604,7 +1742,8 @@ async function loadFile(file){
     id: existing?existing.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     title, artist, tempo:s.tempo||100,
     fmt:/\.midi?$/i.test(file.name)?'MIDI':'MusicXML',
-    raw:s.raw, acc:s.acc, phr:s.phr, lyr:s.lyr||[]
+    raw:s.raw,acc:s.acc,phr:s.phr,lyr:s.lyr||[],
+    midiGroups:s.midiGroups,midiAutoKey:s.midiAutoKey
   };
   if(existing) LIB.songs[LIB.songs.indexOf(existing)]=entry;
   else LIB.songs.push(entry);
@@ -1629,7 +1768,7 @@ window.addEventListener('drop',e=>{
 /* ---- микрофон и детекция высоты ---- */
 const pc=$('pc');
 let micOn=false, micStream=null, analyser=null, micBuf=null, micRaf=0;
-let pitchSamples=[], curNoteG=null, hitN=0, hitT=0;
+let pitchSamples=[], curNotesG=[], hitN=0, hitT=0;
 function sizeCanvas(){
   const d=window.devicePixelRatio||1;
   pc.width=Math.round(roll.clientWidth*d);
@@ -1766,12 +1905,76 @@ $('hvBtn').onclick=()=>setHView(!hView);
 const controlBar=$('controlBar');
 const moreBtn=$('moreBtn');
 const morePanel=$('morePanel');
+function midiTrackDisplayName(group){return group.name||t('midiTrack')+' '+(group.tr+1);}
+function renderMidiTrackControls(){
+  const hasMidi=!!(CURRENT_SONG.midiGroups&&CURRENT_SONG.midiGroups.length);
+  const btn=$('midiTracksBtn');
+  btn.hidden=!hasMidi;
+  if(!hasMidi){
+    if(!$('midiTracksView').hidden) closeMidiTrackView(false);
+    return;
+  }
+  const pref=LIB.prefs[curSongId]||{};
+  const resolved=validateMidiTrackKeys(CURRENT_SONG,pref.midiTracks);
+  const manual=!!resolved.keys;
+  const selected=new Set(resolved.keys||[CURRENT_SONG.midiAutoKey]);
+  const state=manual?selected.size+' '+t('midiSelected'):t('midiAuto');
+  btn.textContent='🎼 '+t('midiTracks')+' · '+state;
+  btn.setAttribute('aria-label',t('midiTracks')+' · '+state);
+  $('midiTracksState').textContent=state;
+  const list=$('midiTrackList'); list.innerHTML='';
+  CURRENT_SONG.midiGroups.forEach((group,index)=>{
+    const key=midiGroupKey(group), checked=selected.has(key);
+    const row=document.createElement('label'); row.className='midi-track-row';
+    const input=document.createElement('input');
+    input.type='checkbox'; input.id='midi-track-'+index; input.checked=checked;
+    input.disabled=checked&&selected.size===1;
+    const copy=document.createElement('span'); copy.className='midi-track-copy';
+    const name=document.createElement('span'); name.className='midi-track-name';
+    const title=document.createElement('span'); title.textContent=midiTrackDisplayName(group); name.appendChild(title);
+    if(!manual&&key===CURRENT_SONG.midiAutoKey){
+      const badge=document.createElement('span'); badge.className='midi-auto-badge'; badge.textContent=t('midiAuto');
+      name.appendChild(badge);
+    }
+    const pitches=group.notes.map(n=>n.m), lo=Math.min(...pitches), hi=Math.max(...pitches);
+    const meta=document.createElement('span'); meta.className='midi-track-meta';
+    meta.textContent=t('midiChannel')+' '+(group.ch+1)+' · '+t('midiProgram')+' '+(group.prog==null?'—':group.prog+1)+
+      ' · '+group.notes.length+' '+t('midiNotes')+' · '+noteFull(lo)+'–'+noteFull(hi);
+    copy.append(name,meta); row.append(input,copy); input.setAttribute('aria-label',title.textContent+' · '+meta.textContent);
+    row.htmlFor=input.id;
+    input.onchange=()=>{
+      const next=new Set(selected);
+      if(input.checked) next.add(key); else next.delete(key);
+      if(!next.size){input.checked=true;return;}
+      applyMidiTrackSelection([...next]);
+    };
+    list.appendChild(row);
+  });
+}
+function openMidiTrackView(){
+  if($('midiTracksBtn').hidden) return;
+  renderMidiTrackControls();
+  $('settingsMain').hidden=true;
+  $('midiTracksView').hidden=false;
+  requestAnimationFrame(()=>(
+    $('midiTrackList').querySelector('input:not([disabled])')||$('midiTracksAuto')
+  ).focus());
+}
+function closeMidiTrackView(returnFocus=false){
+  $('midiTracksView').hidden=true;
+  $('settingsMain').hidden=false;
+  if(returnFocus) $('midiTracksBtn').focus();
+}
+$('midiTracksBtn').onclick=openMidiTrackView;
+$('midiTracksBack').onclick=()=>closeMidiTrackView(true);
+$('midiTracksAuto').onclick=()=>applyMidiTrackSelection(null);
 function setSettingsOpen(open,returnFocus=false){
   controlBar.classList.toggle('settings-open',open);
   moreBtn.setAttribute('aria-expanded',String(open));
   morePanel.setAttribute('aria-modal','false');
-  if(!open) $('helpDetails').open=false;
+  if(!open){$('helpDetails').open=false;closeMidiTrackView(false);}
   if(open){
+    renderMidiTrackControls();
     requestAnimationFrame(()=>morePanel.querySelector('.more-body button:not([disabled]),.more-body input:not([disabled])')?.focus());
   }else if(returnFocus){
     moreBtn.focus();
@@ -2004,8 +2207,8 @@ function processPitch(f,countScore=true){
   silentN=0;
   const mf=smoothPitch(midiOf(f));
   let diff=null;
-  if(playing&&curNoteG){
-    diff=mf-curNoteG[2];
+  if(playing&&curNotesG.length){
+    diff=nearestTargetDiff(mf,curNotesG);
     if(countScore){
       hitT++; if(Math.abs(diff)<=0.5) hitN++;
       if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
@@ -2103,7 +2306,11 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(controlBar.classList.contains('settings-open')){
-    if(e.code==='Escape'){e.preventDefault();closeSettings(true);return;}
+    if(e.code==='Escape'){
+      e.preventDefault();
+      if(!$('midiTracksView').hidden) closeMidiTrackView(true); else closeSettings(true);
+      return;
+    }
   }
   if(e.target.tagName==='INPUT'||e.target.classList?.contains('scard')) return;
   if(e.code==='Space'){e.preventDefault();if(e.target.tagName==='BUTTON')e.target.blur();playing?pause():play(true);}
