@@ -27,7 +27,7 @@ body{
   font-family:"Golos Text","Segoe UI",system-ui,sans-serif;
   font-size:14px;
 }
-.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;min-height:100dvh;
+.wrap{width:100%;max-width:none;margin:0 auto;display:flex;flex-direction:column;gap:10px;min-height:100dvh;
   padding:max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
 
@@ -241,8 +241,13 @@ html[lang="en"] .breath::after{content:"breath"}
   background:repeating-linear-gradient(90deg,var(--flame) 0 13px,transparent 13px 18px)}
 .badge.lyrb{color:#e0b7ff;border-color:#77518c}
 
-footer{color:var(--muted);font-size:12px;line-height:1.6}
-footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11px}
+.help-details{width:100%;border-top:1px solid var(--line);padding-top:8px;color:var(--muted);font-size:12px;line-height:1.55}
+.help-details summary{cursor:pointer;color:var(--txt);font-weight:600;list-style:none}
+.help-details summary::-webkit-details-marker{display:none}
+.help-details summary::after{content:"⌄";float:right;color:var(--muted)}
+.help-details[open] summary::after{content:"⌃"}
+#helpText{padding-top:8px}
+#helpText kbd{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11px}
 
 #moreBackdrop{display:none}
 #morePanel{position:absolute;z-index:35;right:0;top:calc(100% + 8px);display:none;
@@ -276,11 +281,6 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
   .bar>.grp .num [data-i18n="phrase"]{display:none}
   .song-btn{margin-left:auto;max-width:38px;justify-content:center}
   .song-btn .song-word,.song-btn #songCount,.song-btn #curSongLine{display:none}
-  #morePanel{position:fixed;z-index:61;left:0;right:0;top:auto;bottom:0;width:auto;
-    max-height:min(82dvh,680px);border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom)}
-  .bar.settings-open #moreBackdrop{position:fixed;z-index:60;inset:0;display:block;
-    background:#05070ecc;backdrop-filter:blur(4px)}
-  footer{display:none}
   .keys{height:92px}
   .nowbox{padding:5px 9px;gap:8px}
   .nowbox .cur{font-size:18px}
@@ -361,6 +361,10 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
           <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
           <button id="langBtn" title="Language">🌐 RU</button>
         </div>
+        <details class="help-details" id="helpDetails">
+          <summary data-i18n="help">❔ Справка</summary>
+          <div id="helpText"></div>
+        </details>
       </div>
     </div>
   </div>
@@ -387,7 +391,6 @@ footer kbd{background:var(--panel);border:1px solid var(--line);border-radius:5p
 
   <div class="keys" id="keys"></div>
 
-  <footer id="footerText"></footer>
 </div>
 
 <div class="modal" id="songModal">
@@ -435,7 +438,7 @@ const T={
 ru:{
   subtitle:'вокальный тренажёр', play:'▶ Петь', pause:'⏸ Пауза', phrase:'фраза',
   repeat:'🔁 повтор', legato:'легато', mic:'🎙 микрофон', wf:'⬇ водопад', hv:'📈 контур',
-  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', settings:'Настройки', close:'Закрыть', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
+  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', settings:'Настройки', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
   curnote:'текущая нота', next:'дальше', sing:'пою',
   search:'поиск по названию…', openfile:'📂 открыть файл…',
   footRepo:'файлы из папки songs/ репозитория появляются здесь сами на всех устройствах',
@@ -453,7 +456,7 @@ ru:{
 en:{
   subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
   repeat:'🔁 repeat', legato:'legato', mic:'🎙 microphone', wf:'⬇ waterfall', hv:'📈 contour',
-  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', settings:'Settings', close:'Close', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
+  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', settings:'Settings', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
   curnote:'current note', next:'next', sing:'singing',
   search:'search by title…', openfile:'📂 open file…',
   footRepo:'files from the repo folder songs/ appear here automatically on all devices',
@@ -492,7 +495,7 @@ function applyLang(){
   document.documentElement.setAttribute('lang',LANG);
   document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
   $('songSearch').placeholder=t('search');
-  $('footerText').innerHTML=t('footerHtml');
+  $('helpText').innerHTML=t('footerHtml');
   updatePlayButton();
   $('micBtn').setAttribute('aria-label',t('mic'));
   $('moreBtn').title=t('settings');
@@ -1669,7 +1672,9 @@ function clearFx(){parts.length=0; if(fx.width) fx.getContext('2d').clearRect(0,
 
 /* ---- «контур»: ноты слева направо, голос — линией поверх (как в Erol Singer's Studio) ---- */
 let hView=false;
-const HV_PAGE=8; // четвертей на «страницу»: ноты стоят, бегунок и голос движутся слева направо
+function hViewPageQuarters(){
+  return Math.max(2,Math.round(roll.clientWidth/560))*4;
+}
 function rr(ctx,x,y,w,h,r){
   r=Math.min(r,w/2,h/2);
   ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
@@ -1684,10 +1689,11 @@ function drawHView(q){
   const pad=10*d;
   const yOf=m=>pad+(hi-m)/span*(H-2*pad);
   const semiH=(H-2*pad)/span;
-  const pageStart=Math.floor(q/HV_PAGE)*HV_PAGE;
-  const xOf=t=>((t-pageStart)/HV_PAGE)*W;
+  const pageQuarters=hViewPageQuarters();
+  const pageStart=Math.floor(q/pageQuarters)*pageQuarters;
+  const xOf=t=>((t-pageStart)/pageQuarters)*W;
   // вертикальные метки долей внутри страницы (каждая 4-я ярче)
-  for(let b=0;b<=HV_PAGE;b++){
+  for(let b=0;b<=pageQuarters;b++){
     ctx.fillStyle=((pageStart+b)%4===0)?'#ffffff14':'#ffffff08';
     ctx.fillRect(xOf(pageStart+b)-0.5*d,0,1*d,H);
   }
@@ -1705,7 +1711,7 @@ function drawHView(q){
   // статичные отрезки нот текущей страницы
   for(let i=0;i<MELODY.length;i++){
     const [s,dur,m]=MELODY[i];
-    if(s+dur<pageStart||s>pageStart+HV_PAGE) continue;
+    if(s+dur<pageStart||s>pageStart+pageQuarters) continue;
     const x1=Math.max(-4*d,xOf(s)), x2=Math.min(W+4*d,xOf(s+dur));
     const h=Math.max(4*d,semiH*0.72), y=yOf(m)-h/2;
     const sounding=s<=q&&q<s+dur, past=s+dur<=q;
@@ -1760,11 +1766,11 @@ $('hvBtn').onclick=()=>setHView(!hView);
 const controlBar=$('controlBar');
 const moreBtn=$('moreBtn');
 const morePanel=$('morePanel');
-const mobileSettings=()=>matchMedia('(max-width:760px)').matches;
 function setSettingsOpen(open,returnFocus=false){
   controlBar.classList.toggle('settings-open',open);
   moreBtn.setAttribute('aria-expanded',String(open));
-  morePanel.setAttribute('aria-modal',String(open&&mobileSettings()));
+  morePanel.setAttribute('aria-modal','false');
+  if(!open) $('helpDetails').open=false;
   if(open){
     requestAnimationFrame(()=>morePanel.querySelector('.more-body button:not([disabled]),.more-body input:not([disabled])')?.focus());
   }else if(returnFocus){
@@ -1776,7 +1782,7 @@ moreBtn.onclick=()=>setSettingsOpen(!controlBar.classList.contains('settings-ope
 $('moreClose').onclick=()=>closeSettings(true);
 $('moreBackdrop').onclick=()=>closeSettings(true);
 document.addEventListener('pointerdown',e=>{
-  if(controlBar.classList.contains('settings-open')&&!mobileSettings()&&!morePanel.contains(e.target)&&!moreBtn.contains(e.target)){
+  if(controlBar.classList.contains('settings-open')&&!morePanel.contains(e.target)&&!moreBtn.contains(e.target)){
     closeSettings();
   }
 });
@@ -2098,15 +2104,6 @@ window.addEventListener('keydown',e=>{
   }
   if(controlBar.classList.contains('settings-open')){
     if(e.code==='Escape'){e.preventDefault();closeSettings(true);return;}
-    if(e.key==='Tab'&&mobileSettings()){
-      const items=[...morePanel.querySelectorAll('button:not([disabled]),input:not([disabled])')]
-        .filter(el=>el.offsetParent!==null);
-      if(items.length){
-        const first=items[0],last=items[items.length-1];
-        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
-        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
-      }
-    }
   }
   if(e.target.tagName==='INPUT'||e.target.classList?.contains('scard')) return;
   if(e.code==='Space'){e.preventDefault();if(e.target.tagName==='BUTTON')e.target.blur();playing?pause():play(true);}
@@ -2128,7 +2125,6 @@ applyLang();
 window.addEventListener('resize',()=>{
   sizeCanvas();
   if(!playing){render(startQ);drawPitch();if(hView)drawHView(startQ);}
-  if(controlBar.classList.contains('settings-open')) morePanel.setAttribute('aria-modal',String(mobileSettings()));
 });
 </script>
 </body>
