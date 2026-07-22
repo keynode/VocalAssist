@@ -68,7 +68,7 @@ All selected groups become the vocal layer:
 - they play through the existing microphone/vocal volume control (`🎤`);
 - all unselected non-percussion groups become accompaniment and play through the accompaniment volume control (`🎹`).
 
-Changing the selection while playback is active pauses at the current position, rebuilds the vocal and accompaniment layers, and preserves that timeline position instead of restarting the song. The contour, waterfall, phrases, lyrics, ticks, keyboard range, and audio routing are refreshed immediately.
+Changing the selection while playback is active does not pause, restart, or reset the song. The current timeline position and `playing` state are preserved while the vocal and accompaniment layers, contour, waterfall, phrases, lyrics, ticks, keyboard range, and future audio routing are refreshed immediately. Notes already sounding through Web Audio may finish naturally so the change does not create an audible cut; subsequent note onsets use the rebuilt layers.
 
 ## MIDI Data Model
 
@@ -134,7 +134,7 @@ When several selected target notes are active at the current time, microphone sc
 2. Load and validate the current song's `midiTracks` preference.
 3. Build vocal and accompaniment layers from the automatic choice or validated manual keys.
 4. Apply the song and render the selector state from the same source of truth.
-5. On checkbox change, persist the keys, pause if needed, rebuild derived song state, and restore the current playback time.
+5. On checkbox change, persist the keys and rebuild derived song state at the current playback time without changing the active transport state.
 6. On reset, delete the preference and rebuild through the unchanged automatic path.
 
 The rebuilding operation is centralized so initial song loading, manual changes, reset, and stale-preference recovery cannot produce different splits from the same selection.
@@ -189,8 +189,8 @@ Browser QA is performed at desktop and narrow viewport sizes:
 
 1. Open a MIDI song and enter the selector.
 2. Select multiple groups and confirm simultaneous notes render.
-3. Start playback, change the selection, and confirm playback pauses without losing position.
-4. Resume and confirm vocal/accompaniment volume routing and microphone scoring.
+3. Start playback, change the selection, and confirm playback remains active and continues advancing without restarting.
+4. Confirm the rebuilt vocal/accompaniment routing and microphone scoring apply from subsequent note onsets.
 5. Reset to automatic mode.
 6. Save a manual selection, reopen the song, and confirm restoration.
 7. Confirm MusicXML has no selector and the console contains no new errors.
@@ -224,7 +224,7 @@ A dedicated subview inside the existing settings popover keeps the main controls
 - The settings popover offers a compact MIDI-only track selector subview.
 - The user can select one or several valid track/channel groups and cannot leave manual mode with zero groups.
 - Every selected note is rendered; simultaneous active targets score against the nearest pitch.
-- Selection changes preserve playback position and correctly rebuild all derived views and audio layers.
+- Selection changes preserve playback position, keep active playback running, and correctly rebuild all derived views and future audio layers.
 - The selection persists per song in the current browser and reset cleanly restores automatic detection.
 - Stale preferences recover safely.
 - MusicXML behavior and existing compact settings behavior remain unchanged.
