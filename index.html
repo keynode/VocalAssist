@@ -1122,6 +1122,7 @@ function updHud(q){
   $('tlFill').style.width=pct+'%'; $('tlDot').style.left=pct+'%';
 }
 function setPos(q){
+  bumpMicTimeline();
   startQ=q; curIdx=idxFor(MELODY,q); accIdx=idxFor(ACC,q); clearKeys();
   pitchSamples.length=0;
   if(ac){startAcTime=ac.currentTime;}
@@ -1213,6 +1214,7 @@ function tick(){
 }
 function play(){
   unlockMedia(); initAudio(); if(ac.state==='suspended')ac.resume();
+  bumpMicTimeline();
   playing=true; updatePlayButton();
   hitN=0; hitT=0; $('hitPct').textContent='—';
   startAcTime=ac.currentTime;
@@ -1220,9 +1222,10 @@ function play(){
   curIdx=idxFor(MELODY,startQ); accIdx=idxFor(ACC,startQ);
   raf=requestAnimationFrame(tick);
 }
-function pause(){startQ=Math.max(nowQ(),0);cancelAnimationFrame(raf);playing=false;stopSound();hqPlayback=false;
+function pause(){startQ=Math.max(nowQ(),0);bumpMicTimeline();cancelAnimationFrame(raf);playing=false;stopSound();hqPlayback=false;
   updatePlayButton();if(midiAudioNeedReload)prepareMidiAudio(true);}
 function jumpTo(q){
+  bumpMicTimeline();
   const resumeHq=playing&&hqPlayback;
   clearKeys(); stopSound(); startQ=q;
   curIdx=idxFor(MELODY,q); accIdx=idxFor(ACC,q);
@@ -1259,6 +1262,7 @@ $('play').onclick=()=>{playing?pause():play();};
 $('restart').onclick=()=>{initAudio();reset();};
 $('tempo').oninput=e=>{
   const q=playing?nowQ():startQ;
+  bumpMicTimeline();
   bpm=+e.target.value;$('tempoVal').textContent=bpm;updDur();
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), bpm}; saveLibDebounced();
   if(playing){startQ=Math.max(q,0);startAcTime=ac.currentTime;if(hqPlayback){midiAudioEngine.stop();hqPlayback=beginHighQualityMidi(startQ);}}
@@ -1267,6 +1271,7 @@ $('tempo').oninput=e=>{
 function setTransp(v){
   v=Math.max(-7,Math.min(7,Math.round(v)));
   if(v===TRANSP) return;
+  bumpMicTimeline();
   TRANSP=v;
   $('transpVal').textContent=(TRANSP>0?'+':'')+TRANSP;
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), transp:TRANSP}; saveLibDebounced();
@@ -1282,6 +1287,7 @@ $('trUp').onclick=()=>setTransp(TRANSP+1);
 function setVoct(v){ // октава только вокального трека
   v=Math.max(-3,Math.min(3,Math.round(v)));
   if(v===VOCT) return;
+  bumpMicTimeline();
   VOCT=v;
   $('voctVal').textContent=(VOCT>0?'+':'')+VOCT;
   LIB.prefs[curSongId]={...(LIB.prefs[curSongId]||{}), voct:VOCT}; saveLibDebounced();
@@ -1309,6 +1315,7 @@ $('phLoop').onclick=e=>{
 };
 $('legato').onclick=e=>{
   legatoOn=!legatoOn;e.currentTarget.classList.toggle('on',legatoOn);
+  bumpMicTimeline();
   UI.legato=legatoOn; saveUI();
   const q=playing?nowQ():startQ; MELODY=buildMelody(); rebuild();
   if(playing){curIdx=idxFor(MELODY,q);} else setPos(startQ);
@@ -1998,6 +2005,7 @@ async function parseSongData(name,ab){
 }
 function applyMidiTrackSelection(nextKeys){
   if(!(CURRENT_SONG.midiGroups&&CURRENT_SONG.midiGroups.length)) return;
+  bumpMicTimeline();
   let keys=null;
   if(Array.isArray(nextKeys)&&nextKeys.length) keys=validateMidiTrackKeys(CURRENT_SONG,nextKeys).keys;
   const wasPlaying=playing;
@@ -2107,6 +2115,9 @@ let pitchSamples=[], curNotesG=[], hitN=0, hitT=0;
 const MIC_SYNC_KEY='vocalassist.micSyncMs';
 let micFineMs=Math.max(-250,Math.min(400,Number(localStorage.getItem(MIC_SYNC_KEY))||0));
 let reportedMicLatencySec=0, micTimelineRevision=0;
+let micDelay={captureDetect:null,detectPaint:null,capturePaint:null};
+const micEma=(old,value)=>old==null?value:old*0.85+value*0.15;
+function bumpMicTimeline(){return ++micTimelineRevision;}
 function reportedMicLatency(track){
   const value=Number(track?.getSettings?.().latency);
   return Number.isFinite(value)&&value>=0&&value<=1?value:0;
@@ -2120,6 +2131,13 @@ function micWindowTiming(captureEndTime,windowSamples){
     q:playing?startQ+(analysisTime-startAcTime)*qPerSec():null,
     revision:micTimelineRevision
   };
+}
+function markMicSamplePainted(sample,paintTime=ac.currentTime){
+  if(sample.painted)return;
+  sample.painted=true;
+  micDelay.detectPaint=micEma(micDelay.detectPaint,(paintTime-sample.detectedTime)*1000);
+  micDelay.capturePaint=micEma(micDelay.capturePaint,(paintTime-sample.analysisTime)*1000);
+  if(typeof renderMicSyncSettings==='function')renderMicSyncSettings();
 }
 function sizeCanvas(){
   const d=window.devicePixelRatio||1;
@@ -2227,6 +2245,7 @@ function drawHView(q){
       const sq=(s.q!=null)?s.q:q-(nowT-s.t)/1000*qps;
       if(sq<pageStart||sq>q+0.05){prev=null;continue;}
       const x=xOf(sq), y=yOf(s.mf);
+      markMicSamplePainted(s);
       const good=s.diff!=null&&Math.abs(s.diff)<=0.5;
       if(prev&&Math.abs(prev.y-y)<semiH*3&&x-prev.x<W*0.08){
         ctx.strokeStyle=good?'#8ef0b0cc':'#79cfffcc';
@@ -2242,6 +2261,7 @@ function drawHView(q){
       ctx.fillStyle=good?'#8ef0b0':'#79cfff';
       ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=12*d;
       ctx.fill(); ctx.shadowBlur=0;
+      markMicSamplePainted(last);
     }
   }
 }
@@ -2506,6 +2526,7 @@ function drawPitch(){
       ctx.beginPath();
       ctx.arc(xPct(s.mf)*W/100, lineY+dq*pxq, 2*d, 0, 7);
       ctx.fill();
+      markMicSamplePainted(s);
     }
     ctx.restore();
   }
@@ -2532,6 +2553,7 @@ function drawPitch(){
     ctx.fillStyle=good?'#8ef0b0':'#79cfff';
     ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=12*d;
     ctx.fill(); ctx.shadowBlur=0;
+    markMicSamplePainted(last);
   }
 }
 async function micToggle(){
@@ -2684,8 +2706,10 @@ function processPitch(f,timing=null,options){
       if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
     }
   }
-  const sample={t:performance.now(),q:sampleQ,mf,diff,
-    analysisTime:timing?.analysisTime??ac.currentTime,revision:timing?.revision??micTimelineRevision};
+  const detectedTime=ac.currentTime, analysisTime=timing?.analysisTime??detectedTime;
+  micDelay.captureDetect=micEma(micDelay.captureDetect,(detectedTime-analysisTime)*1000);
+  const sample={t:performance.now(),q:sampleQ,mf,diff,analysisTime,detectedTime,painted:false,
+    revision:timing?.revision??micTimelineRevision};
   pitchSamples.push(sample);
   if(pitchSamples.length>500) pitchSamples.splice(0,100);
   if(updateLive){

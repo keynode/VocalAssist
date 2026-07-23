@@ -84,6 +84,8 @@ const runProcessPitch = new Function('ctx', `
   const pitchSamples=[];
   const performance={now:()=>1000};
   const ac={currentTime:10};
+  const micDelay={captureDetect:null,detectPaint:null,capturePaint:null};
+  const micEma=(old,value)=>old==null?value:old*0.85+value*0.15;
   const midiOf=()=>69;
   const smoothPitch=mf=>mf;
   const activeTargetNotes=(melody,q)=>{ctx.targetQueries.push(q);return melody;};
@@ -100,13 +102,49 @@ const runProcessPitch = new Function('ctx', `
   const noteFull=()=> 'A4';
   ${processPitchSource}
   const sample=processPitch(440,{q:3.25,analysisTime:9.95,revision:7});
-  return {sample,pitchSamples,hitN,hitT};
+  return {sample,pitchSamples,hitN,hitT,micDelay};
 `);
 const historicalQueries = [];
 const historicalResult = runProcessPitch({targetQueries:historicalQueries});
 assert.deepStrictEqual(historicalQueries, [3.25], 'scoring must query targets at captureQ');
 assert.strictEqual(historicalResult.pitchSamples[0].q, 3.25, 'trace must store captureQ');
 assert.strictEqual(historicalResult.hitT, 1, 'historical target must count exactly once');
+assertClose(historicalResult.micDelay.captureDetect,50,0.0001,'capture-to-detect measurement');
+
+for (const name of ['setPos','play','pause','jumpTo','setTransp','setVoct','applyMidiTrackSelection']) {
+  assert(
+    extractFunction(name).includes('bumpMicTimeline()'),
+    `${name} must invalidate pending microphone results`,
+  );
+}
+const tempoHandler = html.slice(
+  html.indexOf("$('tempo').oninput"),
+  html.indexOf('function setTransp'),
+);
+assert(tempoHandler.includes('bumpMicTimeline()'), 'tempo re-anchor must invalidate pending microphone results');
+const legatoHandler = html.slice(
+  html.indexOf("$('legato').onclick"),
+  html.indexOf('/* ---- караоке-текст'),
+);
+assert(legatoHandler.includes('bumpMicTimeline()'), 'legato rebuild must invalidate pending microphone results');
+
+const markMicSamplePaintedSource = extractFunction('markMicSamplePainted');
+const runFirstPaint = new Function('sample', `
+  let renderCalls=0;
+  const micDelay={captureDetect:null,detectPaint:null,capturePaint:null};
+  const micEma=(old,value)=>old==null?value:old*0.85+value*0.15;
+  const renderMicSyncSettings=()=>{renderCalls++;};
+  ${markMicSamplePaintedSource}
+  markMicSamplePainted(sample,10.1);
+  markMicSamplePainted(sample,10.2);
+  return {micDelay,renderCalls};
+`);
+const paintedSample = {analysisTime:10,detectedTime:10.05,painted:false};
+const firstPaintResult = runFirstPaint(paintedSample);
+assert.strictEqual(paintedSample.painted,true);
+assertClose(firstPaintResult.micDelay.detectPaint,50,0.0001,'detect-to-paint measurement');
+assertClose(firstPaintResult.micDelay.capturePaint,100,0.0001,'capture-to-paint measurement');
+assert.strictEqual(firstPaintResult.renderCalls,1,'a sample must update first-paint metrics once');
 
 const capCode = (html.match(/const CAP_CODE=`([\s\S]*?)`;/)||[])[1]||'';
 assert(capCode.includes('endFrame'), 'AudioWorklet message must contain an end-frame timestamp');
