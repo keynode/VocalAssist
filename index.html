@@ -2104,6 +2104,23 @@ window.addEventListener('drop',e=>{
 const pc=$('pc');
 let micOn=false, micStream=null, analyser=null, micBuf=null, micRaf=0;
 let pitchSamples=[], curNotesG=[], hitN=0, hitT=0;
+const MIC_SYNC_KEY='vocalassist.micSyncMs';
+let micFineMs=Math.max(-250,Math.min(400,Number(localStorage.getItem(MIC_SYNC_KEY))||0));
+let reportedMicLatencySec=0, micTimelineRevision=0;
+function reportedMicLatency(track){
+  const value=Number(track?.getSettings?.().latency);
+  return Number.isFinite(value)&&value>=0&&value<=1?value:0;
+}
+function micWindowTiming(captureEndTime,windowSamples){
+  const windowMs=windowSamples/ac.sampleRate*500;
+  const correctionMs=Math.max(0,windowMs+reportedMicLatencySec*1000+micFineMs);
+  const analysisTime=captureEndTime-correctionMs/1000;
+  return {
+    analysisTime,
+    q:playing?startQ+(analysisTime-startAcTime)*qPerSec():null,
+    revision:micTimelineRevision
+  };
+}
 function sizeCanvas(){
   const d=window.devicePixelRatio||1;
   pc.width=Math.round(roll.clientWidth*d);
@@ -2639,27 +2656,37 @@ function detectTick(){
     }).catch(()=>{}).finally(()=>{sfeBusy=false;});
   }
 }
-function processPitch(f,countScore=true){
+function processPitch(f,timing=null,options){
+  options=options||{};
+  if(typeof timing==='boolean'){options={countScore:timing};timing=null;}
+  const countScore=options.countScore!==false, updateLive=options.updateLive!==false;
   if(!(f>0)){
     if(++silentN>18){trk=null; pendMf=null; pendN=0;}
-    return;
+    return null;
   }
   silentN=0;
   const mf=smoothPitch(midiOf(f));
+  const sampleQ=timing&&Number.isFinite(timing.q)?timing.q:(playing?nowQ():null);
+  const targets=playing&&sampleQ!=null?activeTargetNotes(MELODY,sampleQ):[];
   let diff=null;
-  if(playing&&curNotesG.length){
-    diff=nearestTargetDiff(mf,curNotesG);
+  if(targets.length){
+    diff=nearestTargetDiff(mf,targets);
     if(countScore){
       hitT++; if(Math.abs(diff)<=0.5) hitN++;
       if(hitT%10===0) $('hitPct').textContent=Math.round(hitN/hitT*100)+'%';
     }
   }
-  pitchSamples.push({t:performance.now(), q:playing?nowQ():null, mf, diff});
+  const sample={t:performance.now(),q:sampleQ,mf,diff,
+    analysisTime:timing?.analysisTime??ac.currentTime,revision:timing?.revision??micTimelineRevision};
+  pitchSamples.push(sample);
   if(pitchSamples.length>500) pitchSamples.splice(0,100);
-  const near=Math.round(mf), cents=Math.round((mf-near)*100);
-  $('sungNN').textContent=noteFull(near);
-  $('sungCents').textContent=(cents>0?'+':'')+cents+'¢';
-  $('sungBox').classList.toggle('off', diff!=null&&Math.abs(diff)>0.5);
+  if(updateLive){
+    const near=Math.round(mf), cents=Math.round((mf-near)*100);
+    $('sungNN').textContent=noteFull(near);
+    $('sungCents').textContent=(cents>0?'+':'')+cents+'¢';
+    $('sungBox').classList.toggle('off', diff!=null&&Math.abs(diff)>0.5);
+  }
+  return sample;
 }
 function micLoop(){
   if(!micOn) return;
