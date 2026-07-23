@@ -108,7 +108,7 @@ assert.deepStrictEqual(
   'fully stale preferences must fall back to automatic mode',
 );
 
-assert(html.includes('const PARSE_V=5'), 'repository parser cache version must be incremented');
+assert(html.includes('const PARSE_V=6'), 'repository parser cache version must remain current');
 assert(
   /midiGroups\s*:\s*s\.midiGroups/.test(html) && /midiAutoKey\s*:\s*s\.midiAutoKey/.test(html),
   'local MIDI entries must retain group metadata',
