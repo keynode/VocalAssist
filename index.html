@@ -78,6 +78,7 @@ input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 .song-btn b{color:var(--flame)}
 #curSongLine{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
 #curSongLine b{color:var(--txt);font-weight:600}
+.sounds-btn{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .modal{position:fixed;inset:0;background:#05070ecc;backdrop-filter:blur(5px);display:none;
   z-index:40;align-items:center;justify-content:center;padding:18px}
 .modal.open{display:flex}
@@ -110,6 +111,23 @@ input[type=range]:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 .s-del:hover{color:var(--bad);background:#ff8f8f14}
 .sh-foot{display:flex;gap:10px;align-items:center;padding:11px 16px;border-top:1px solid var(--line);
   color:var(--muted);font-size:12px;flex-wrap:wrap}
+.sound-sheet{max-width:590px}
+.sound-active-line{padding:10px 16px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px}
+.sound-active-line b{color:var(--flame)}
+.sound-library{overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.sound-library-card{display:flex;flex-direction:column;gap:8px;padding:12px 13px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;transition:border-color .15s,background .15s}
+.sound-library-card.active{border-color:var(--ember);background:#33241436;box-shadow:inset 0 0 0 1px #ff9d5220}
+.sound-library-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:650;font-size:14px}
+.sound-library-card.active .sound-library-title{color:var(--ember)}
+.sound-library-copy{color:var(--muted);font-size:11.5px;line-height:1.45}
+.sound-library-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--muted);font-size:10.5px}
+.sound-library-actions{display:flex;gap:7px;flex-wrap:wrap}
+.sound-library-actions button{padding:7px 11px;font-size:12px}
+.sound-library-actions button.danger:hover{color:var(--bad);border-color:var(--bad)}
+.sound-progress{height:5px;overflow:hidden;border-radius:99px;background:var(--line)}
+.sound-progress i{display:block;height:100%;min-width:4px;background:linear-gradient(90deg,var(--ember),var(--flame));transition:width .15s}
+.sound-progress-copy{color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
 @media (max-width:640px){
   .modal{padding:0;align-items:flex-end}
   .sheet{max-width:none;border-radius:16px 16px 0 0;max-height:88dvh}
@@ -273,11 +291,6 @@ html[lang="en"] .breath::after{content:"breath"}
 .midi-track-name span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .midi-track-meta{color:var(--muted);font-size:10px;line-height:1.35}
 .midi-auto-badge{flex:0 0 auto;color:#ffd166;border:1px solid #7a6333;border-radius:999px;padding:1px 5px;font-size:9px;text-transform:uppercase}
-.sound-bank-card{display:flex;flex-direction:column;gap:8px;padding:11px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-.sound-bank-name{font-weight:650;overflow-wrap:anywhere}
-.sound-bank-status{color:var(--muted);font-size:11px;line-height:1.4}
-.sound-bank-actions{display:flex;gap:8px;flex-wrap:wrap}
-.sound-bank-actions button{flex:1;min-width:130px}
 @media (max-width:760px){
   .brand{font-size:17px}
   .subtitle{display:none}
@@ -287,7 +300,7 @@ html[lang="en"] .breath::after{content:"breath"}
   button{padding:8px 11px;font-size:13px}
   button.primary{padding:9px 16px;font-size:14px}
   .bar{gap:4px}
-  .bar>.primary,#restart,#micBtn,.song-btn,#moreBtn{width:38px;height:38px;padding:0;display:grid;place-items:center}
+  .bar>.primary,#restart,#micBtn,.song-btn,.sounds-btn,#moreBtn{width:38px;height:38px;padding:0;display:grid;place-items:center}
   .bar>.primary,#micBtn{font-size:0}
   .bar>.primary::before{content:attr(data-icon);font-size:16px}
   #micBtn::before{content:"🎙";font-size:16px}
@@ -297,6 +310,7 @@ html[lang="en"] .breath::after{content:"breath"}
   .bar>.grp .num [data-i18n="phrase"]{display:none}
   .song-btn{margin-left:auto;max-width:38px;justify-content:center}
   .song-btn .song-word,.song-btn #songCount,.song-btn #curSongLine{display:none}
+  .sounds-btn .sounds-word{display:none}
   .keys{height:92px}
   .nowbox{padding:5px 9px;gap:8px}
   .nowbox .cur{font-size:18px}
@@ -305,7 +319,7 @@ html[lang="en"] .breath::after{content:"breath"}
   input[type=range]{width:90px}
 }
 @media (max-width:360px){
-  .bar>.primary,#restart,#micBtn,.song-btn,#moreBtn{width:34px;height:36px}
+  .bar>.primary,#restart,#micBtn,.song-btn,.sounds-btn,#moreBtn{width:34px;height:36px}
   .bar>.grp button{padding:7px 7px}
   .bar>.grp .num{min-width:26px}
 }
@@ -338,6 +352,10 @@ html[lang="en"] .breath::after{content:"breath"}
       <span class="song-word" data-i18n="songsWord">Песни</span>
       <b id="songCount"></b>
       <span id="curSongLine">—</span>
+    </button>
+    <button id="soundsBtn" class="sounds-btn" aria-expanded="false" aria-controls="soundsModal" title="Звуки">
+      <span aria-hidden="true">🎛</span>
+      <span class="sounds-word" data-i18n="soundsWord">Звуки</span>
     </button>
     <button id="moreBtn" class="icon-btn" aria-expanded="false" aria-controls="morePanel" title="Настройки">⚙</button>
     <input id="fileInp" type="file" accept=".mxl,.musicxml,.xml,.mid,.midi" style="display:none">
@@ -376,7 +394,6 @@ html[lang="en"] .breath::after{content:"breath"}
           <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
           <button id="langBtn" title="Language">🌐 RU</button>
           <button id="midiTracksBtn" class="midi-tracks-entry" aria-controls="midiTracksView" hidden>🎼 MIDI-дорожки · Авто</button>
-          <button id="soundBankBtn" class="midi-tracks-entry" aria-controls="soundBankView">🎛 SoundFont · GeneralUser GS</button>
         </div>
         <details class="help-details" id="helpDetails">
           <summary data-i18n="help">❔ Справка</summary>
@@ -393,25 +410,6 @@ html[lang="en"] .breath::after{content:"breath"}
           <button id="midiTracksAuto" data-i18n="midiAutomatic">Автоопределение</button>
         </div>
         <div id="midiTrackList" class="midi-track-list"></div>
-      </div>
-      <div id="soundBankView" class="settings-subview" hidden>
-        <div class="midi-tracks-toolbar">
-          <button id="soundBankBack" class="icon-btn" title="Назад" aria-label="Назад">←</button>
-          <div class="midi-tracks-heading">
-            <strong data-i18n="soundBank">SoundFont</strong>
-            <span data-i18n="soundBankSubtitle" class="midi-tracks-state">Качественные инструменты MIDI</span>
-          </div>
-        </div>
-        <div class="sound-bank-card">
-          <div id="soundBankName" class="sound-bank-name">GeneralUser GS</div>
-          <div id="soundBankStatus" class="sound-bank-status">Загрузится при первом воспроизведении</div>
-          <div class="sound-bank-actions">
-            <button id="soundBankChoose" data-i18n="soundBankChoose">Выбрать .sf2 / .sf3 / .dls</button>
-            <button id="soundBankDefault" data-i18n="soundBankDefault">Вернуть GeneralUser GS</button>
-          </div>
-          <input id="soundBankInput" type="file" accept=".sf2,.sf3,.dls" hidden>
-          <div class="sound-bank-status" data-i18n="soundBankHint">Timbres of Heaven сначала распакуйте из архива, затем выберите файл .sf2.</div>
-        </div>
       </div>
     </div>
   </div>
@@ -454,6 +452,23 @@ html[lang="en"] .breath::after{content:"breath"}
   </div>
 </div>
 
+<div class="modal" id="soundsModal">
+  <div class="sheet sound-sheet" role="dialog" aria-modal="true" aria-labelledby="soundsTitle">
+    <div class="sh-head">
+      <span class="ttl" id="soundsTitle">🎛 <span data-i18n="soundsTitle">Библиотека звуков</span></span>
+      <span class="spacer"></span>
+      <button class="sh-close" id="soundsClose" title="Esc">✕</button>
+    </div>
+    <div class="sound-active-line" id="soundActiveLine"></div>
+    <div class="sound-library" id="soundLibrary"></div>
+    <div class="sh-foot">
+      <button id="soundImportBtn" data-i18n="soundImport">＋ Добавить свой SoundFont</button>
+      <span data-i18n="soundStorageHint">Установленные банки сохраняются только в этом браузере</span>
+      <input id="soundBankInput" type="file" accept=".sf2,.sf3,.dls" hidden>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -485,19 +500,29 @@ const T={
 ru:{
   subtitle:'вокальный тренажёр', play:'▶ Петь', pause:'⏸ Пауза', phrase:'фраза',
   repeat:'🔁 повтор', legato:'легато', mic:'🎙 микрофон', wf:'⬇ водопад', hv:'📈 контур',
-  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', settings:'Настройки', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
+  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', soundsWord:'Звуки', soundsTitle:'Библиотека звуков', settings:'Настройки', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
   curnote:'текущая нота', next:'дальше', sing:'пою',
   search:'поиск по названию…', openfile:'📂 открыть файл…',
   midiTracks:'MIDI-дорожки', midiAuto:'Авто', midiAutomatic:'Автоопределение', midiSelected:'выбрано',
   midiTrack:'Дорожка', midiChannel:'канал', midiProgram:'программа', midiNotes:'нот', midiBack:'Назад',
   midiTracksUnavailable:'Сохранённые MIDI-дорожки больше недоступны — включено автоопределение',
-  soundBank:'SoundFont', soundBankSubtitle:'Качественные инструменты MIDI',
-  soundBankChoose:'Выбрать .sf2 / .sf3 / .dls', soundBankDefault:'Вернуть GeneralUser GS',
-  soundBankHint:'Timbres of Heaven сначала распакуйте из архива, затем выберите файл .sf2.',
   soundBankIdle:'Загрузится после первого нажатия воспроизведения', soundBankLoading:'Загружается и подготавливается…',
   soundBankReady:'Готов · SpessaSynth', soundBankPending:'Сохранён · включится со следующего воспроизведения',
   soundBankFailed:'Не удалось загрузить — используется прежний синтезатор', soundBankSaved:'SoundFont сохранён в этом браузере',
   soundBankBadFile:'Выберите файл .sf2, .sf3 или .dls', soundBankDefaultName:'GeneralUser GS',
+  soundActive:'Активный банк', soundBuiltin:'встроен', soundInstalled:'установлен', soundInstall:'Установить',
+  soundUse:'Использовать', soundCurrent:'Активен', soundRemove:'Удалить', soundFreeDownload:'Бесплатно скачать',
+  soundImport:'＋ Добавить свой SoundFont', soundStorageHint:'Установленные банки сохраняются только в этом браузере',
+  soundDownloading:'Скачивание', soundApplying:'Выбран · включится со следующего воспроизведения',
+  soundInstallFailed:'Не удалось установить SoundFont', soundRemoved:'SoundFont удалён',
+  soundStorageShort:'Недостаточно свободного места в хранилище браузера', soundCustom:'Свой SoundFont',
+  soundSource:'Источник', soundLicense:'Лицензия', soundRetry:'Повторить',
+  soundTohTerms:'бесплатное использование · распространение ограничено',
+  soundGeneralUserDesc:'Сбалансированный GM/GS-банк по умолчанию с быстрым запуском.',
+  soundMuseScoreDesc:'Более объёмный General MIDI набор MuseScore с чистыми оркестровыми инструментами.',
+  soundTimDesc:'Лёгкий General MIDI банк — экономит память и быстро загружается.',
+  soundTohDesc:'Большой GS/XG-банк Don Allen. Скачайте официальный архив, распакуйте и импортируйте .sf2.',
+  soundCustomDesc:'Файл .sf2, .sf3 или .dls, добавленный с этого устройства.',
   footRepo:'файлы из папки songs/ репозитория появляются здесь сами на всех устройствах',
   kind_builtin:'встроенная', kind_repo:'из репозитория · на всех устройствах', kind_local:'только в этом браузере',
   notloaded:'ещё не загружалась — нажми, чтобы открыть', phrases:'фраз', noacc:'без аккомпанемента',
@@ -513,19 +538,29 @@ ru:{
 en:{
   subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
   repeat:'🔁 repeat', legato:'legato', mic:'🎙 microphone', wf:'⬇ waterfall', hv:'📈 contour',
-  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', settings:'Settings', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
+  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', soundsWord:'Sounds', soundsTitle:'Sound library', settings:'Settings', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
   curnote:'current note', next:'next', sing:'singing',
   search:'search by title…', openfile:'📂 open file…',
   midiTracks:'MIDI tracks', midiAuto:'Auto', midiAutomatic:'Automatic detection', midiSelected:'selected',
   midiTrack:'Track', midiChannel:'channel', midiProgram:'program', midiNotes:'notes', midiBack:'Back',
   midiTracksUnavailable:'Saved MIDI tracks are no longer available — automatic detection restored',
-  soundBank:'SoundFont', soundBankSubtitle:'High-quality MIDI instruments',
-  soundBankChoose:'Choose .sf2 / .sf3 / .dls', soundBankDefault:'Restore GeneralUser GS',
-  soundBankHint:'Extract Timbres of Heaven from its archive first, then choose the .sf2 file.',
   soundBankIdle:'Loads after the first playback press', soundBankLoading:'Loading and preparing…',
   soundBankReady:'Ready · SpessaSynth', soundBankPending:'Saved · applies on the next playback',
   soundBankFailed:'Could not load — keeping the previous synthesizer', soundBankSaved:'SoundFont saved in this browser',
   soundBankBadFile:'Choose an .sf2, .sf3, or .dls file', soundBankDefaultName:'GeneralUser GS',
+  soundActive:'Active bank', soundBuiltin:'built in', soundInstalled:'installed', soundInstall:'Install',
+  soundUse:'Use', soundCurrent:'Active', soundRemove:'Remove', soundFreeDownload:'Download free',
+  soundImport:'＋ Add your SoundFont', soundStorageHint:'Installed banks are saved only in this browser',
+  soundDownloading:'Downloading', soundApplying:'Selected · applies on the next playback',
+  soundInstallFailed:'Could not install SoundFont', soundRemoved:'SoundFont removed',
+  soundStorageShort:'Not enough free browser storage', soundCustom:'Custom SoundFont',
+  soundSource:'Source', soundLicense:'License', soundRetry:'Retry',
+  soundTohTerms:'free to use · restricted redistribution',
+  soundGeneralUserDesc:'Balanced default GM/GS bank with fast startup.',
+  soundMuseScoreDesc:'A larger MuseScore General MIDI set with clean orchestral instruments.',
+  soundTimDesc:'Lightweight General MIDI bank that saves memory and loads quickly.',
+  soundTohDesc:'Large Don Allen GS/XG bank. Download the official archive, extract it, and import the .sf2.',
+  soundCustomDesc:'An .sf2, .sf3, or .dls file added from this device.',
   footRepo:'files from the repo folder songs/ appear here automatically on all devices',
   kind_builtin:'built-in', kind_repo:'from repo · on all devices', kind_local:'only in this browser',
   notloaded:'not loaded yet — tap to open', phrases:'phrases', noacc:'no accompaniment',
@@ -565,6 +600,10 @@ function applyLang(){
   $('helpText').innerHTML=t('footerHtml');
   updatePlayButton();
   $('micBtn').setAttribute('aria-label',t('mic'));
+  $('soundsBtn').title=t('soundsTitle');
+  $('soundsBtn').setAttribute('aria-label',t('soundsTitle'));
+  $('soundsClose').title=t('close');
+  $('soundsClose').setAttribute('aria-label',t('close'));
   $('moreBtn').title=t('settings');
   $('moreBtn').setAttribute('aria-label',t('settings'));
   $('moreClose').title=t('close');
@@ -572,8 +611,6 @@ function applyLang(){
   $('midiTracksBack').title=t('midiBack');
   $('midiTracksBack').setAttribute('aria-label',t('midiBack'));
   $('midiTracksAuto').setAttribute('aria-label',t('midiAutomatic'));
-  $('soundBankBack').title=t('midiBack');
-  $('soundBankBack').setAttribute('aria-label',t('midiBack'));
   $('noteBtn').textContent=noteStyle==='letters'?'C-D-E':(LANG==='ru'?'До-Ре-Ми':'Do-Re-Mi');
   $('langBtn').textContent='🌐 '+LANG.toUpperCase();
   updCurSongLine();
@@ -581,7 +618,7 @@ function applyLang(){
   if(!playing){render(startQ); if(typeof hView!=='undefined'&&hView) drawHView(startQ);}
   renderShelf();
   if(typeof renderMidiTrackControls==='function') renderMidiTrackControls();
-  if(typeof renderSoundBankControls==='function') renderSoundBankControls();
+  if(typeof renderSoundLibrary==='function') renderSoundLibrary();
   updNoteBox(playing&&ac?nowQ():startQ);
 }
 
@@ -706,9 +743,22 @@ let ac=null, master=null, voxGain=null, accGain=null;
 const MIDI_AUDIO_DB='vocalassist.audio', MIDI_AUDIO_STORE='soundbanks';
 const DEFAULT_SOUNDBANK_URL='audio/GeneralUser-GS.sf2';
 const DEFAULT_SOUNDBANK_NAME='GeneralUser GS';
+const SOUND_BANK_CATALOG=[
+  {id:'generaluser',name:'GeneralUser GS',url:DEFAULT_SOUNDBANK_URL,size:32319396,storage:'builtin',
+    license:'GeneralUser GS License 2.0',source:'VocalAssist',descKey:'soundGeneralUserDesc'},
+  {id:'musescore-general',name:'MuseScore General',url:'audio/MuseScore_General.sf3',size:39900972,storage:'install',
+    license:'MIT',source:'MuseScore',descKey:'soundMuseScoreDesc'},
+  {id:'timgm6mb',name:'TimGM6mb',url:'audio/TimGM6mb.sf2',size:5969788,storage:'install',
+    license:'GPL-2.0',source:'Debian',descKey:'soundTimDesc'},
+  {id:'timbres-heaven',name:'Timbres of Heaven 4.00(G)',
+    url:'https://www.midkar.com/SoundFonts/Timbres%20of%20Heaven%20%28XGM%29%204.00%28G%29.7z',
+    size:439620490,storage:'external',licenseKey:'soundTohTerms',source:'MidKar',descKey:'soundTohDesc',approx:true}
+];
+const SOUND_BANK_BY_ID=new Map(SOUND_BANK_CATALOG.map(bank=>[bank.id,bank]));
 let midiAudioEngine=null, midiAudioLoadP=null, midiAudioGeneration=0;
 let midiAudioState='idle', midiAudioNeedReload=false, hqPlayback=false;
-let midiBankMeta={name:DEFAULT_SOUNDBANK_NAME,custom:false,size:32319396};
+let activeSoundBankId='generaluser', installedSoundBanks=new Map();
+let soundInstallState=null, soundInstallErrorId='', soundLibraryReadyP=null;
 
 function openMidiAudioDb(){
   return new Promise((resolve,reject)=>{
@@ -718,58 +768,178 @@ function openMidiAudioDb(){
     req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error||Error('IndexedDB error'));
   });
 }
-async function readCustomSoundBank(){
+async function readSoundBankRecord(id){
   const db=await openMidiAudioDb();
   try{return await new Promise((resolve,reject)=>{
-    const req=db.transaction(MIDI_AUDIO_STORE,'readonly').objectStore(MIDI_AUDIO_STORE).get('active');
+    const req=db.transaction(MIDI_AUDIO_STORE,'readonly').objectStore(MIDI_AUDIO_STORE).get(id);
     req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
   });}finally{db.close();}
 }
-async function writeCustomSoundBank(file){
+async function mutateSoundBankRecords(puts=[],deletes=[]){
   const db=await openMidiAudioDb();
   try{await new Promise((resolve,reject)=>{
     const tx=db.transaction(MIDI_AUDIO_STORE,'readwrite');
-    tx.objectStore(MIDI_AUDIO_STORE).put({id:'active',name:file.name,size:file.size,type:file.type,updated:Date.now(),blob:file});
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Storage aborted'));
-  });}finally{db.close();}
-  try{await navigator.storage?.persist?.();}catch(e){}
-}
-async function deleteCustomSoundBank(){
-  const db=await openMidiAudioDb();
-  try{await new Promise((resolve,reject)=>{
-    const tx=db.transaction(MIDI_AUDIO_STORE,'readwrite');tx.objectStore(MIDI_AUDIO_STORE).delete('active');
+    const store=tx.objectStore(MIDI_AUDIO_STORE);
+    puts.forEach(record=>store.put(record));
+    deletes.forEach(id=>store.delete(id));
     tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Storage aborted'));
   });}finally{db.close();}
 }
-async function loadSoundBankPreference(){
+const soundBankRecordId=id=>'bank:'+id;
+function activeSoundBankInfo(){
+  if(activeSoundBankId==='custom'){
+    const record=installedSoundBanks.get('custom');
+    return {id:'custom',name:record?.name||t('soundCustom'),size:record?.size||0,storage:'custom'};
+  }
+  return SOUND_BANK_BY_ID.get(activeSoundBankId)||SOUND_BANK_BY_ID.get('generaluser');
+}
+async function loadSoundLibraryState(){
   try{
-    const saved=await readCustomSoundBank();
-    if(saved) midiBankMeta={name:saved.name,size:saved.size,custom:true};
-  }catch(e){}
-  if(typeof renderSoundBankControls==='function')renderSoundBankControls();
+    let active=await readSoundBankRecord('active-bank');
+    const legacy=await readSoundBankRecord('active');
+    if(!active&&legacy?.blob){
+      const custom={id:soundBankRecordId('custom'),bankId:'custom',name:legacy.name||t('soundCustom'),
+        size:legacy.size||legacy.blob.size||0,type:legacy.type||legacy.blob.type,updated:Date.now(),blob:legacy.blob};
+      active={id:'active-bank',bankId:'custom',updated:Date.now()};
+      await mutateSoundBankRecords([custom,active],['active']);
+    }
+    const ids=['musescore-general','timgm6mb','custom'];
+    const records=await Promise.all(ids.map(id=>readSoundBankRecord(soundBankRecordId(id))));
+    installedSoundBanks=new Map();
+    records.forEach((record,index)=>{if(record?.blob)installedSoundBanks.set(ids[index],record);});
+    activeSoundBankId=active?.bankId||'generaluser';
+    if(activeSoundBankId!=='generaluser'&&!installedSoundBanks.has(activeSoundBankId)){
+      activeSoundBankId='generaluser';
+      await mutateSoundBankRecords([{id:'active-bank',bankId:'generaluser',updated:Date.now()}]);
+    }
+  }catch(e){
+    activeSoundBankId='generaluser';
+    console.warn('Sound library unavailable:',e);
+  }
+  if(typeof renderSoundLibrary==='function')renderSoundLibrary();
 }
 function soundBankStatusText(){
   if(midiAudioState==='loading')return t('soundBankLoading');
   if(midiAudioState==='ready'&&!midiAudioNeedReload)return t('soundBankReady');
-  if(midiAudioState==='error')return t('soundBankFailed');
   if(midiAudioNeedReload)return t('soundBankPending');
+  if(midiAudioState==='error')return t('soundBankFailed');
   return t('soundBankIdle');
 }
-function renderSoundBankControls(){
-  const name=$('soundBankName'),status=$('soundBankStatus'),btn=$('soundBankBtn');
-  if(!name||!status||!btn)return;
-  name.textContent=midiBankMeta.name||DEFAULT_SOUNDBANK_NAME;
-  status.textContent=soundBankStatusText()+(midiBankMeta.size?' · '+(midiBankMeta.size/1048576).toFixed(1)+' MB':'');
-  btn.textContent='🎛 '+t('soundBank')+' · '+(midiBankMeta.name||DEFAULT_SOUNDBANK_NAME);
-  btn.title=status.textContent;
-  $('soundBankDefault').disabled=!midiBankMeta.custom;
+async function persistActiveSoundBank(id){
+  await mutateSoundBankRecords([{id:'active-bank',bankId:id,updated:Date.now()}]);
+}
+async function selectSoundBank(id){
+  if(soundLibraryReadyP)await soundLibraryReadyP;
+  const entry=SOUND_BANK_BY_ID.get(id);
+  if(entry?.storage==='external')return;
+  if(id!=='generaluser'&&!installedSoundBanks.has(id))return;
+  try{
+    await persistActiveSoundBank(id);
+    activeSoundBankId=id;
+    soundInstallErrorId='';
+    renderSoundLibrary();
+    requestMidiAudioReload();
+    if(playing)toast(t('soundApplying'));
+  }catch(e){toast(t('storageFull'));}
+}
+async function removeSoundBank(id){
+  if(soundLibraryReadyP)await soundLibraryReadyP;
+  if(id==='generaluser'||!installedSoundBanks.has(id))return;
+  try{
+    if(activeSoundBankId===id){
+      await persistActiveSoundBank('generaluser');
+      activeSoundBankId='generaluser';
+      requestMidiAudioReload();
+    }
+    await mutateSoundBankRecords([], [soundBankRecordId(id)]);
+    installedSoundBanks.delete(id);
+    renderSoundLibrary();
+    toast(t('soundRemoved'));
+  }catch(e){toast(t('storageFull'));}
+}
+async function installCatalogSoundBank(id){
+  if(soundLibraryReadyP)await soundLibraryReadyP;
+  const entry=SOUND_BANK_BY_ID.get(id);
+  if(!entry||entry.storage!=='install'||soundInstallState)return;
+  try{
+    const estimate=await navigator.storage?.estimate?.();
+    if(estimate?.quota&&estimate.quota-(estimate.usage||0)<entry.size){
+      toast(t('soundStorageShort'));return;
+    }
+  }catch(e){}
+  soundInstallErrorId='';
+  soundInstallState={id,loaded:0,total:entry.size};
+  renderSoundLibrary();
+  try{
+    const response=await fetch(entry.url);
+    if(!response.ok)throw Error('SoundFont HTTP '+response.status);
+    const total=Number(response.headers.get('Content-Length'))||entry.size;
+    soundInstallState.total=total;
+    let blob;
+    if(response.body?.getReader){
+      const reader=response.body.getReader(),chunks=[];
+      let loaded=0,lastPaint=0;
+      while(true){
+        const {done,value}=await reader.read();
+        if(done)break;
+        chunks.push(value);loaded+=value.byteLength;soundInstallState.loaded=loaded;
+        const now=performance.now();
+        if(now-lastPaint>100){lastPaint=now;renderSoundLibrary();}
+      }
+      blob=new Blob(chunks,{type:'application/octet-stream'});
+    }else{
+      blob=await response.blob();
+      soundInstallState.loaded=blob.size;
+    }
+    if(!blob.size||(entry.size&&blob.size!==entry.size))throw Error('Unexpected SoundFont size: '+blob.size);
+    const record={id:soundBankRecordId(id),bankId:id,name:entry.name,size:blob.size,
+      type:blob.type||'application/octet-stream',updated:Date.now(),blob};
+    const active={id:'active-bank',bankId:id,updated:Date.now()};
+    await mutateSoundBankRecords([record,active]);
+    installedSoundBanks.set(id,record);
+    activeSoundBankId=id;
+    try{await navigator.storage?.persist?.();}catch(e){}
+    requestMidiAudioReload();
+    toast(t('soundBankSaved')+': '+entry.name);
+  }catch(e){
+    console.warn('SoundFont install failed:',e);
+    soundInstallErrorId=id;
+    toast(t('soundInstallFailed')+': '+entry.name);
+  }finally{
+    soundInstallState=null;
+    renderSoundLibrary();
+  }
+}
+async function chooseCustomSoundBank(file){
+  if(soundLibraryReadyP)await soundLibraryReadyP;
+  if(!file||!/\.(sf2|sf3|dls)$/i.test(file.name)){toast(t('soundBankBadFile'));return;}
+  try{
+    const record={id:soundBankRecordId('custom'),bankId:'custom',name:file.name,size:file.size,
+      type:file.type||'application/octet-stream',updated:Date.now(),blob:file};
+    const active={id:'active-bank',bankId:'custom',updated:Date.now()};
+    await mutateSoundBankRecords([record,active]);
+    installedSoundBanks.set('custom',record);
+    activeSoundBankId='custom';
+    try{await navigator.storage?.persist?.();}catch(e){}
+    renderSoundLibrary();
+    toast(t('soundBankSaved')+': '+file.name);
+    requestMidiAudioReload();
+  }catch(e){toast(t('storageFull'));}
 }
 async function preferredSoundBank(){
-  try{
-    const saved=await readCustomSoundBank();
-    if(saved&&saved.blob){midiBankMeta={name:saved.name,size:saved.size,custom:true};return saved.blob.arrayBuffer();}
-  }catch(e){}
-  midiBankMeta={name:DEFAULT_SOUNDBANK_NAME,custom:false,size:32319396};
+  if(soundLibraryReadyP)await soundLibraryReadyP;
+  if(activeSoundBankId!=='generaluser'){
+    let record=installedSoundBanks.get(activeSoundBankId);
+    if(!record){
+      try{record=await readSoundBankRecord(soundBankRecordId(activeSoundBankId));}catch(e){}
+      if(record?.blob)installedSoundBanks.set(activeSoundBankId,record);
+    }
+    if(record?.blob){
+      return record.blob.arrayBuffer();
+    }
+    activeSoundBankId='generaluser';
+    try{await persistActiveSoundBank('generaluser');}catch(e){}
+  }
   const response=await fetch(DEFAULT_SOUNDBANK_URL);
   if(!response.ok)throw Error('SoundFont HTTP '+response.status);
   return response.arrayBuffer();
@@ -779,7 +949,7 @@ function prepareMidiAudio(force=false){
   if(midiAudioEngine&&!midiAudioNeedReload&&!force)return Promise.resolve(midiAudioEngine);
   if(midiAudioLoadP)return midiAudioLoadP;
   const generation=++midiAudioGeneration;
-  midiAudioState='loading';renderSoundBankControls();
+  midiAudioState='loading';renderSoundLibrary();
   midiAudioLoadP=(async()=>{
     const soundBankBuffer=await preferredSoundBank();
     const Engine=window.VocalAssistMidiAudio.MidiAudioEngine;
@@ -789,33 +959,20 @@ function prepareMidiAudio(force=false){
     midiAudioNeedReload=false;midiAudioState='ready';
     next.setVolumes($('vol').value/100,$('accVol').value/100);
     if(previous)previous.destroy();
-    renderSoundBankControls();
+    renderSoundLibrary();
     return next;
   })().catch(e=>{
     console.warn('SpessaSynth unavailable:',e);
-    midiAudioState='error';renderSoundBankControls();return null;
+    midiAudioState='error';renderSoundLibrary();return null;
   }).finally(()=>{midiAudioLoadP=null;});
   return midiAudioLoadP;
 }
 function requestMidiAudioReload(){
-  midiAudioNeedReload=true;renderSoundBankControls();
+  midiAudioNeedReload=true;renderSoundLibrary();
   if(midiAudioLoadP){
     midiAudioGeneration++;
     midiAudioLoadP.finally(()=>{if(!playing&&midiAudioNeedReload)prepareMidiAudio(true);});
   }else if(!playing)prepareMidiAudio(true);
-}
-async function chooseCustomSoundBank(file){
-  if(!file||!/\.(sf2|sf3|dls)$/i.test(file.name)){toast(t('soundBankBadFile'));return;}
-  try{
-    await writeCustomSoundBank(file);
-    midiBankMeta={name:file.name,size:file.size,custom:true};
-    toast(t('soundBankSaved')+': '+file.name);requestMidiAudioReload();
-  }catch(e){toast(t('storageFull'));}
-}
-async function restoreDefaultSoundBank(){
-  try{await deleteCustomSoundBank();}catch(e){toast(t('storageFull'));return;}
-  midiBankMeta={name:DEFAULT_SOUNDBANK_NAME,custom:false,size:32319396};
-  requestMidiAudioReload();
 }
 /* iOS: WebAudio молчит при включённом бесшумном переключателе; крошечный зацикленный
    <audio> переводит вкладку в режим «медиа», который играет всегда */
@@ -1409,7 +1566,11 @@ function renderShelf(){
   $('songCount').textContent=allSongs().length;
   if($('songModal').classList.contains('open')) renderSongList();
 }
-function openSongModal(){renderSongList(); $('songModal').classList.add('open');}
+function openSongModal(){
+  if(typeof setSoundsOpen==='function')setSoundsOpen(false);
+  if(typeof closeSettings==='function')closeSettings(false);
+  renderSongList();$('songModal').classList.add('open');
+}
 function closeSongModal(){$('songModal').classList.remove('open');}
 $('songsBtn').onclick=openSongModal;
 $('songClose').onclick=closeSongModal;
@@ -2142,23 +2303,116 @@ function closeMidiTrackView(returnFocus=false){
 $('midiTracksBtn').onclick=openMidiTrackView;
 $('midiTracksBack').onclick=()=>closeMidiTrackView(true);
 $('midiTracksAuto').onclick=()=>applyMidiTrackSelection(null);
-function openSoundBankView(){
-  renderSoundBankControls();$('settingsMain').hidden=true;$('midiTracksView').hidden=true;$('soundBankView').hidden=false;
-  requestAnimationFrame(()=>$('soundBankChoose').focus());
+const formatSoundBankSize=size=>(size/1048576).toFixed(size<10485760?1:0)+' MB';
+function addSoundAction(container,label,handler,className=''){
+  const button=document.createElement('button');
+  button.textContent=label;
+  if(className)button.className=className;
+  if(handler)button.onclick=handler;else button.disabled=true;
+  container.appendChild(button);
+  return button;
 }
-function closeSoundBankView(returnFocus=false){
-  $('soundBankView').hidden=true;$('settingsMain').hidden=false;if(returnFocus)$('soundBankBtn').focus();
+function renderSoundLibrary(){
+  const list=$('soundLibrary'),line=$('soundActiveLine');
+  if(!list||!line)return;
+  const active=activeSoundBankInfo();
+  line.textContent=t('soundActive')+': ';
+  const activeName=document.createElement('b');
+  activeName.textContent=active.name||DEFAULT_SOUNDBANK_NAME;
+  line.appendChild(activeName);
+  const engineState=document.createElement('span');
+  engineState.textContent=' · '+soundBankStatusText();
+  line.appendChild(engineState);
+  list.textContent='';
+  const entries=[...SOUND_BANK_CATALOG];
+  const custom=installedSoundBanks.get('custom');
+  if(custom)entries.push({id:'custom',name:custom.name,size:custom.size,storage:'custom',
+    license:t('kind_local'),source:t('soundCustom'),descKey:'soundCustomDesc'});
+  entries.forEach(entry=>{
+    const installed=entry.storage==='builtin'||installedSoundBanks.has(entry.id);
+    const isActive=activeSoundBankId===entry.id;
+    const installing=soundInstallState?.id===entry.id;
+    const card=document.createElement('section');
+    card.className='sound-library-card'+(isActive?' active':'');
+    card.dataset.bankId=entry.id;
+    const title=document.createElement('div');
+    title.className='sound-library-title';
+    const name=document.createElement('span');
+    name.textContent=entry.name;
+    title.appendChild(name);
+    if(isActive){
+      const badge=document.createElement('span');badge.className='badge';badge.textContent=t('soundCurrent');title.appendChild(badge);
+    }else if(installed){
+      const badge=document.createElement('span');badge.className='badge';badge.textContent=entry.storage==='builtin'?t('soundBuiltin'):t('soundInstalled');title.appendChild(badge);
+    }
+    card.appendChild(title);
+    const copy=document.createElement('div');
+    copy.className='sound-library-copy';copy.textContent=t(entry.descKey);card.appendChild(copy);
+    const meta=document.createElement('div');
+    meta.className='sound-library-meta';
+    const size=document.createElement('span');
+    size.textContent=(entry.approx?'≈ ':'')+formatSoundBankSize(entry.size);
+    meta.appendChild(size);
+    const license=document.createElement('span');
+    license.textContent='· '+t('soundLicense')+': '+(entry.licenseKey?t(entry.licenseKey):entry.license);meta.appendChild(license);
+    const source=document.createElement('span');
+    source.textContent='· '+t('soundSource')+': '+entry.source;meta.appendChild(source);
+    card.appendChild(meta);
+    if(installing){
+      const total=soundInstallState.total||entry.size;
+      const pct=total?Math.min(100,soundInstallState.loaded/total*100):0;
+      const progress=document.createElement('div');progress.className='sound-progress';
+      const fill=document.createElement('i');fill.style.width=pct+'%';progress.appendChild(fill);card.appendChild(progress);
+      const progressCopy=document.createElement('div');progressCopy.className='sound-progress-copy';
+      progressCopy.textContent=t('soundDownloading')+' · '+formatSoundBankSize(soundInstallState.loaded)+' / '+formatSoundBankSize(total);
+      card.appendChild(progressCopy);
+    }
+    const actions=document.createElement('div');actions.className='sound-library-actions';
+    if(installing){
+      addSoundAction(actions,t('soundDownloading')+'…',null);
+    }else if(entry.storage==='external'){
+      addSoundAction(actions,t('soundFreeDownload'),()=>window.open(entry.url,'_blank','noopener,noreferrer'));
+    }else if(!installed){
+      addSoundAction(actions,soundInstallErrorId===entry.id?t('soundRetry'):t('soundInstall'),()=>installCatalogSoundBank(entry.id));
+    }else if(isActive){
+      addSoundAction(actions,t('soundCurrent'),null);
+    }else{
+      addSoundAction(actions,t('soundUse'),()=>selectSoundBank(entry.id));
+    }
+    if(installed&&entry.storage!=='builtin'){
+      addSoundAction(actions,t('soundRemove'),()=>removeSoundBank(entry.id),'danger');
+    }
+    card.appendChild(actions);
+    list.appendChild(card);
+  });
 }
-$('soundBankBtn').onclick=openSoundBankView;
-$('soundBankBack').onclick=()=>closeSoundBankView(true);
-$('soundBankChoose').onclick=()=>$('soundBankInput').click();
-$('soundBankInput').onchange=e=>{const file=e.target.files[0];if(file)chooseCustomSoundBank(file);e.target.value='';};
-$('soundBankDefault').onclick=restoreDefaultSoundBank;
+function setSoundsOpen(open,returnFocus=false){
+  const modal=$('soundsModal');
+  if(open){
+    closeSongModal();
+    closeSettings(false);
+    renderSoundLibrary();
+  }
+  modal.classList.toggle('open',open);
+  $('soundsBtn').setAttribute('aria-expanded',String(open));
+  if(open)requestAnimationFrame(()=>$('soundsClose').focus());
+  else if(returnFocus)$('soundsBtn').focus();
+}
+$('soundsBtn').onclick=()=>setSoundsOpen(!$('soundsModal').classList.contains('open'));
+$('soundsClose').onclick=()=>setSoundsOpen(false,true);
+$('soundsModal').onclick=e=>{if(e.target===$('soundsModal'))setSoundsOpen(false,true);};
+$('soundImportBtn').onclick=()=>$('soundBankInput').click();
+$('soundBankInput').onchange=e=>{
+  const file=e.target.files[0];
+  if(file)chooseCustomSoundBank(file);
+  e.target.value='';
+};
 function setSettingsOpen(open,returnFocus=false){
+  if(open){setSoundsOpen(false);closeSongModal();}
   controlBar.classList.toggle('settings-open',open);
   moreBtn.setAttribute('aria-expanded',String(open));
   morePanel.setAttribute('aria-modal','false');
-  if(!open){$('helpDetails').open=false;closeMidiTrackView(false);closeSoundBankView(false);}
+  if(!open){$('helpDetails').open=false;closeMidiTrackView(false);}
   if(open){
     renderMidiTrackControls();
     requestAnimationFrame(()=>morePanel.querySelector('.more-body button:not([disabled]),.more-body input:not([disabled])')?.focus());
@@ -2487,6 +2741,10 @@ $('engBtn').textContent=engineLabel();
 
 /* ---- hotkeys ---- */
 window.addEventListener('keydown',e=>{
+  if($('soundsModal').classList.contains('open')){
+    if(e.code==='Escape'){e.preventDefault();setSoundsOpen(false,true);}
+    return;
+  }
   if($('songModal').classList.contains('open')){
     if(e.code==='Escape') closeSongModal();
     return;
@@ -2495,7 +2753,6 @@ window.addEventListener('keydown',e=>{
     if(e.code==='Escape'){
       e.preventDefault();
       if(!$('midiTracksView').hidden)closeMidiTrackView(true);
-      else if(!$('soundBankView').hidden)closeSoundBankView(true);
       else closeSettings(true);
       return;
     }
@@ -2511,7 +2768,7 @@ window.addEventListener('keydown',e=>{
 applySong(LIB.songs.find(s=>s.id===LIB.last)||BUILTIN);
 sizeCanvas();
 loadRepoList();
-loadSoundBankPreference();
+soundLibraryReadyP=loadSoundLibraryState();
 preloadSfScripts(); // сэмплы инструментов качаются в фоне, к первому нажатию «Петь» обычно уже готовы
 if(localStorage.getItem('vocalassist.hview')==='1') setHView(true);
 if(localStorage.getItem('vocalassist.wfview')==='0') setWfView(false);

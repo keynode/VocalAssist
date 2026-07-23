@@ -26,21 +26,33 @@
 - Create: `audio/MuseScore-General-LICENSE.md`
 - Create: `audio/TimGM6mb.sf2`
 - Create: `audio/TimGM6mb-COPYRIGHT.txt`
+- Create: `audio/TimGM6mb-GPL-2.0.txt`
 
 **Interfaces:**
 - Consumes: Official MuseScore and Debian source assets.
 - Produces: Same-origin catalog URLs `audio/MuseScore_General.sf3` and `audio/TimGM6mb.sf2`.
 
-- [ ] **Step 1: Download the exact upstream assets**
+- [x] **Step 1: Download the exact upstream assets**
 
 ```powershell
 Invoke-WebRequest https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf3 -OutFile audio/MuseScore_General.sf3
 Invoke-WebRequest https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General_License.md -OutFile audio/MuseScore-General-LICENSE.md
-Invoke-WebRequest https://sources.debian.org/data/main/t/timgm6mb-soundfont/1.3-5/TimGM6mb.sf2 -OutFile audio/TimGM6mb.sf2
-Invoke-WebRequest https://sources.debian.org/data/main/t/timgm6mb-soundfont/1.3-5/debian/copyright -OutFile audio/TimGM6mb-COPYRIGHT.txt
+$tmp = Join-Path $env:TEMP 'vocalassist-timgm6mb'
+New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+$deb = Join-Path $tmp 'timgm6mb-soundfont_1.3-5_all.deb'
+Invoke-WebRequest https://deb.debian.org/debian/pool/main/t/timgm6mb-soundfont/timgm6mb-soundfont_1.3-5_all.deb -OutFile $deb
+$hash = (Get-FileHash $deb -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($hash -ne '034abdfb296d9353433513dad5dbdcab46425ee6008fc02fe7039b46e75edc54') { throw "Unexpected Debian hash: $hash" }
+Push-Location $tmp
+tar -xf $deb
+tar -xf data.tar.xz
+Pop-Location
+Copy-Item (Join-Path $tmp 'usr/share/sounds/sf2/TimGM6mb.sf2') audio/TimGM6mb.sf2
+Copy-Item (Join-Path $tmp 'usr/share/doc/timgm6mb-soundfont/copyright') audio/TimGM6mb-COPYRIGHT.txt
+Invoke-WebRequest https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt -OutFile audio/TimGM6mb-GPL-2.0.txt
 ```
 
-- [ ] **Step 2: Record sizes and hashes**
+- [x] **Step 2: Record sizes and hashes**
 
 Run:
 
@@ -66,11 +78,11 @@ Expected sizes: `39,900,972` bytes and `5,969,788` bytes.
   - `selectSoundBank(id): Promise<void>`
   - `installCatalogSoundBank(id): Promise<void>`
 
-- [ ] **Step 1: Define the catalog and active state**
+- [x] **Step 1: Define the catalog and active state**
 
 Add catalog entries with IDs `generaluser`, `musescore-general`, `timgm6mb`, and `timbres-heaven`. Use `builtin`, `install`, and `external` storage modes. Initialize `activeSoundBankId` to `generaluser`, `installedSoundBanks` as a `Map`, and `soundInstallState` as `null`.
 
-- [ ] **Step 2: Generalize IndexedDB record helpers**
+- [x] **Step 2: Generalize IndexedDB record helpers**
 
 Replace the single `active` record helpers with key-based read/write/delete functions. Store the selected ID in:
 
@@ -84,15 +96,15 @@ Store an installed bank as:
 {id:'bank:musescore-general',bankId:'musescore-general',name, size, type, updated:Date.now(), blob}
 ```
 
-- [ ] **Step 3: Migrate the legacy custom bank**
+- [x] **Step 3: Migrate the legacy custom bank**
 
 If `active-bank` is absent and the legacy `active` record contains a Blob, write it to `bank:custom`, write `active-bank` with `bankId:'custom'`, then delete `active`. Never delete the legacy record until both writes complete.
 
-- [ ] **Step 4: Implement streaming installation**
+- [x] **Step 4: Implement streaming installation**
 
 Fetch only same-origin `install` entries, read `response.body.getReader()` when available, update `{id, loaded, total}`, construct a Blob, store it, and select the bank. On failure, leave no partial record and expose a localized retry state.
 
-- [ ] **Step 5: Resolve the active bank**
+- [x] **Step 5: Resolve the active bank**
 
 Make `preferredSoundBank()` return GeneralUser from its URL or an installed/custom Blob. If the selected record is missing, restore `generaluser` and persist that repair.
 
@@ -109,15 +121,15 @@ Make `preferredSoundBank()` return GeneralUser from its URL or an installed/cust
   - `activateSoundBank(id): Promise<void>`
   - `removeSoundBank(id): Promise<void>`
 
-- [ ] **Step 1: Add the trigger and overlay**
+- [x] **Step 1: Add the trigger and overlay**
 
 Place `soundsBtn` between `songsBtn` and `moreBtn`. Add `soundsBackdrop`, `soundsPanel`, header, active-state line, card list, custom import button, and hidden `.sf2/.sf3/.dls` input.
 
-- [ ] **Step 2: Add responsive card styling**
+- [x] **Step 2: Add responsive card styling**
 
 Use the existing panel tokens and mobile 38-pixel control sizing. Add active-card accent, status badge, progress bar, card actions, and scrolling bounded by `100dvh`.
 
-- [ ] **Step 3: Render catalog states**
+- [x] **Step 3: Render catalog states**
 
 For every catalog entry render localized name/description, size, source/license, and the correct action:
 
@@ -131,15 +143,15 @@ external           -> Бесплатно скачать
 
 Render the `custom` card when a custom Blob exists and always render `Добавить свой файл`.
 
-- [ ] **Step 4: Wire selection and removal**
+- [x] **Step 4: Wire selection and removal**
 
 Selection persists `active-bank`, updates card state, and calls `requestMidiAudioReload()`. Removal first switches an active bank to GeneralUser, then deletes its Blob. While `playing` is true, only mark the engine for deferred reload.
 
-- [ ] **Step 5: Make overlays mutually exclusive**
+- [x] **Step 5: Make overlays mutually exclusive**
 
 Opening Sounds closes Songs and Settings. Opening Songs or Settings closes Sounds. Escape, backdrop, and close button return focus to `soundsBtn`.
 
-- [ ] **Step 6: Remove the old Settings SoundFont subview**
+- [x] **Step 6: Remove the old Settings SoundFont subview**
 
 Delete `soundBankBtn`, `soundBankView`, its styles, handlers, and Settings Escape branch. Keep shared audio state copy only where the new panel uses it.
 
@@ -147,21 +159,22 @@ Delete `soundBankBtn`, `soundBankView`, its styles, handlers, and Settings Escap
 
 **Files:**
 - Modify: `README.md`
+- Modify: `audio/README.md`
 - Modify: `docs/superpowers/plans/2026-07-23-sound-library.md`
 
 **Interfaces:**
 - Consumes: Completed library behavior.
 - Produces: User-facing source/license/storage instructions and published `main`.
 
-- [ ] **Step 1: Document the library**
+- [x] **Step 1: Document the library**
 
 Describe the Sounds button, bundled banks, IndexedDB storage, custom import, official Timbres extraction flow, and the fact that selection during playback applies at the next start.
 
-- [ ] **Step 2: Perform static verification**
+- [x] **Step 2: Perform static verification**
 
 Run `git diff --check`, extract the inline script into a temporary `.js` file and run `node --check`, confirm asset sizes/hashes, and inspect `git diff --stat`. Do not run `npm test`, a browser, or audio playback.
 
-- [ ] **Step 3: Commit implementation**
+- [x] **Step 3: Commit implementation**
 
 Stage only the plan, `index.html`, `README.md`, and the four audio assets. Commit with:
 
@@ -169,7 +182,7 @@ Stage only the plan, `index.html`, `README.md`, and the four audio assets. Commi
 git commit -m "Добавить библиотеку SoundFont"
 ```
 
-- [ ] **Step 4: Publish and prove parity**
+- [x] **Step 4: Publish and prove parity**
 
 ```powershell
 git push origin main

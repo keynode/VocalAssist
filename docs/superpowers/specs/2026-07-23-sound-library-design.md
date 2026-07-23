@@ -158,6 +158,7 @@ All user-facing strings are localized in Russian and English.
 - `audio/MuseScore-General-LICENSE.md`: upstream license and attribution.
 - `audio/TimGM6mb.sf2`: lightweight GM bank.
 - `audio/TimGM6mb-COPYRIGHT.txt`: upstream Debian copyright/license information.
+- `audio/TimGM6mb-GPL-2.0.txt`: complete GPL-2.0 license text required by the bank's distribution terms.
 - `README.md`: sound-library usage, storage behavior, sources, and Timbres of Heaven import instructions.
 
 No MIDI engine rebuild is required.
