@@ -1,0 +1,13 @@
+{
+  "name": "vocalassist",
+  "private": true,
+  "scripts": {
+    "build:audio": "node src/build-audio.mjs"
+  },
+  "dependencies": {
+    "spessasynth_lib": "4.3.11"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.6"
+  }
+}
