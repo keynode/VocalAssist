@@ -9,6 +9,22 @@ if (!/audio:\{\s*echoCancellation:false,\s*noiseSuppression:false,\s*autoGainCon
   failures.push('microphone capture must request raw input with all browser processing disabled');
 }
 
+for (const id of ['micSyncAuto','micSyncFine','micSyncFineVal','micSyncReset']) {
+  assert(html.includes(`id="${id}"`), `missing compact microphone sync control ${id}`);
+}
+for (const key of ['micSync','micSyncAuto','micSyncFine','micSyncReset','milliseconds']) {
+  const occurrences = [...html.matchAll(new RegExp(`${key}:`,'g'))].length;
+  assert(occurrences>=2, `${key} must be localized in Russian and English`);
+}
+assert(
+  html.includes("localStorage.setItem(MIC_SYNC_KEY,String(micFineMs))"),
+  'manual microphone correction must persist',
+);
+assert(
+  html.includes("reportedMicLatencySec=reportedMicLatency(micStream.getAudioTracks()[0])"),
+  'microphone startup must read reported input latency',
+);
+
 function extractFunction(name) {
   const start = html.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`missing function ${name}`);
@@ -236,6 +252,28 @@ function deferred() {
     assert.strictEqual(published.length,1,'SwiftF0 from an old timeline revision must be discarded');
   } catch (error) {
     failures.push(`SwiftF0 revision scenario failed: ${error.message}`);
+  }
+
+  try {
+    const published = [];
+    runDetectTick({
+      state:{enginePref:'swift',sfeState:'ready',sfeBusy:false,ringFilled:4096,lastF:220,micTimelineRevision:11},
+      captureEndTime:40,
+      lastWindow:n=>new Float32Array(n),
+      pitchAny:()=>220,
+      processPitch(f,timing,options){published.push({f,timing,options});},
+      sfeDetect:()=>Promise.resolve(440),
+      micWindowTiming:(end,n)=>({q:end-n/48000,analysisTime:end-n/96000,revision:11}),
+      ac:{currentTime:40.02},
+      performance:{now:()=>1000},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.strictEqual(published.length,2,'valid SwiftF0 result must refine historical visualization');
+    assert.strictEqual(published[1].options.countScore,false,'SwiftF0 must not score a second time');
+    assert.strictEqual(published[1].options.track,false,'SwiftF0 refinement must not mutate live pitch smoothing');
+  } catch (error) {
+    failures.push(`SwiftF0 historical refinement scenario failed: ${error.message}`);
   }
 
   if (failures.length) {

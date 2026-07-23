@@ -274,6 +274,15 @@ html[lang="en"] .breath::after{content:"breath"}
 .more-body>.settings>.slider{grid-column:1/-1;justify-content:space-between;min-width:0}
 .more-body>.settings>.slider input[type=range]{flex:1;width:auto;min-width:80px}
 .more-body>.settings>button{min-width:0;padding:8px 9px;overflow:hidden;text-overflow:ellipsis}
+.mic-sync{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;
+  align-items:center;padding-top:9px;border-top:1px solid var(--line)}
+.mic-sync-head{display:flex;min-width:0;justify-content:space-between;gap:10px;font-size:12px;color:var(--txt)}
+.mic-sync-head span:last-child{color:var(--muted);white-space:nowrap}
+.mic-sync-adjust{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(90px,1fr) auto auto;
+  align-items:center;gap:7px;font-size:11px}
+.mic-sync-adjust input{width:auto;min-width:90px}
+.mic-sync-adjust output{min-width:44px;text-align:right;color:var(--muted);white-space:nowrap}
+.mic-sync-adjust button{padding:6px 8px;font-size:11px}
 .midi-tracks-entry{grid-column:1/-1;width:100%;text-align:left}
 .settings-subview{padding:11px}
 .settings-subview[hidden]{display:none}
@@ -322,6 +331,8 @@ html[lang="en"] .breath::after{content:"breath"}
   .bar>.primary,#restart,#micBtn,.song-btn,.sounds-btn,#moreBtn{width:34px;height:36px}
   .bar>.grp button{padding:7px 7px}
   .bar>.grp .num{min-width:26px}
+  .mic-sync-adjust{grid-template-columns:1fr auto auto}
+  .mic-sync-adjust>span{grid-column:1/-1}
 }
 </style>
 </head>
@@ -393,6 +404,18 @@ html[lang="en"] .breath::after{content:"breath"}
           <button id="engBtn" title="Детектор высоты: SwiftF0 (нейросеть) / MPM (классика)">🧠 SwiftF0</button>
           <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
           <button id="langBtn" title="Language">🌐 RU</button>
+          <div class="mic-sync">
+            <div class="mic-sync-head">
+              <span data-i18n="micSync">Синхронизация микрофона</span>
+              <span id="micSyncAuto">Авто</span>
+            </div>
+            <div class="mic-sync-adjust">
+              <span id="micSyncFineLabel" data-i18n="micSyncFine">Доп. поправка</span>
+              <input id="micSyncFine" type="range" min="-250" max="400" step="5" value="0" aria-labelledby="micSyncFineLabel">
+              <output id="micSyncFineVal">0 мс</output>
+              <button id="micSyncReset" type="button" data-i18n="micSyncReset">Сбросить</button>
+            </div>
+          </div>
           <button id="midiTracksBtn" class="midi-tracks-entry" aria-controls="midiTracksView" hidden>🎼 MIDI-дорожки · Авто</button>
         </div>
         <details class="help-details" id="helpDetails">
@@ -501,6 +524,7 @@ ru:{
   subtitle:'вокальный тренажёр', play:'▶ Петь', pause:'⏸ Пауза', phrase:'фраза',
   repeat:'🔁 повтор', legato:'легато', mic:'🎙 микрофон', wf:'⬇ водопад', hv:'📈 контур',
   files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', soundsWord:'Звуки', soundsTitle:'Библиотека звуков', settings:'Настройки', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
+  micSync:'Синхронизация микрофона', micSyncAuto:'Авто', micSyncFine:'Доп. поправка', micSyncReset:'Сбросить', milliseconds:'мс',
   curnote:'текущая нота', next:'дальше', sing:'пою',
   search:'поиск по названию…', openfile:'📂 открыть файл…',
   midiTracks:'MIDI-дорожки', midiAuto:'Авто', midiAutomatic:'Автоопределение', midiSelected:'выбрано',
@@ -539,6 +563,7 @@ en:{
   subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
   repeat:'🔁 repeat', legato:'legato', mic:'🎙 microphone', wf:'⬇ waterfall', hv:'📈 contour',
   files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', soundsWord:'Sounds', soundsTitle:'Sound library', settings:'Settings', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
+  micSync:'Microphone sync', micSyncAuto:'Auto', micSyncFine:'Fine adjustment', micSyncReset:'Reset', milliseconds:'ms',
   curnote:'current note', next:'next', sing:'singing',
   search:'search by title…', openfile:'📂 open file…',
   midiTracks:'MIDI tracks', midiAuto:'Auto', midiAutomatic:'Automatic detection', midiSelected:'selected',
@@ -619,6 +644,7 @@ function applyLang(){
   renderShelf();
   if(typeof renderMidiTrackControls==='function') renderMidiTrackControls();
   if(typeof renderSoundLibrary==='function') renderSoundLibrary();
+  if(typeof renderMicSyncSettings==='function') renderMicSyncSettings();
   updNoteBox(playing&&ac?nowQ():startQ);
 }
 
@@ -2139,6 +2165,25 @@ function markMicSamplePainted(sample,paintTime=ac.currentTime){
   micDelay.capturePaint=micEma(micDelay.capturePaint,(paintTime-sample.analysisTime)*1000);
   if(typeof renderMicSyncSettings==='function')renderMicSyncSettings();
 }
+function renderMicSyncSettings(){
+  const auto=$('micSyncAuto');
+  if(!auto)return;
+  const measured=micDelay.capturePaint;
+  const autoText=t('micSyncAuto')+(measured==null?'':' · ~'+Math.max(0,Math.round(measured))+' '+t('milliseconds'));
+  if(auto.textContent!==autoText)auto.textContent=autoText;
+  $('micSyncFine').value=micFineMs;
+  $('micSyncFineVal').textContent=(micFineMs>0?'+':'')+micFineMs+' '+t('milliseconds');
+}
+$('micSyncFine').oninput=e=>{
+  micFineMs=Math.max(-250,Math.min(400,Number(e.target.value)||0));
+  try{localStorage.setItem(MIC_SYNC_KEY,String(micFineMs));}catch(e){}
+  renderMicSyncSettings();
+};
+$('micSyncReset').onclick=()=>{
+  micFineMs=0;
+  try{localStorage.removeItem(MIC_SYNC_KEY);}catch(e){}
+  renderMicSyncSettings();
+};
 function sizeCanvas(){
   const d=window.devicePixelRatio||1;
   pc.width=Math.round(roll.clientWidth*d);
@@ -2564,6 +2609,9 @@ async function micToggle(){
     analyser=null;
     if(micStream) micStream.getTracks().forEach(tr=>tr.stop());
     micStream=null;
+    reportedMicLatencySec=0;
+    micDelay={captureDetect:null,detectPaint:null,capturePaint:null};
+    renderMicSyncSettings();
     $('micBtn').classList.remove('on');
     $('sungBox').style.display='none'; $('hitBox').style.display='none';
     pc.getContext('2d').clearRect(0,0,pc.width,pc.height);
@@ -2578,6 +2626,9 @@ async function micToggle(){
     micStream=await navigator.mediaDevices.getUserMedia({
       audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}
     });
+    reportedMicLatencySec=reportedMicLatency(micStream.getAudioTracks()[0]);
+    micDelay={captureDetect:null,detectPaint:null,capturePaint:null};
+    renderMicSyncSettings();
   }catch(err){
     toast(t('micUnavail')+': '+(err.name==='NotAllowedError'?t('micDenied'):err.message));
     return;
@@ -2682,7 +2733,7 @@ function detectTick(captureEndTime){
     sfeDetect(b).then(sf=>{
       const ageMs=(ac.currentTime-swiftTiming.analysisTime)*1000;
       if(micOn&&enginePref==='swift'&&sf>0&&requestRevision===micTimelineRevision)
-        processPitch(sf,swiftTiming,{countScore:false,updateLive:ageMs<=120});
+        processPitch(sf,swiftTiming,{countScore:false,updateLive:ageMs<=120,track:false});
     }).catch(()=>{}).finally(()=>{sfeBusy=false;});
   }
 }
@@ -2695,7 +2746,8 @@ function processPitch(f,timing=null,options){
     return null;
   }
   silentN=0;
-  const mf=smoothPitch(midiOf(f));
+  const detectedMf=midiOf(f);
+  const mf=options.track===false?detectedMf:smoothPitch(detectedMf);
   const sampleQ=timing&&Number.isFinite(timing.q)?timing.q:(playing?nowQ():null);
   const targets=playing&&sampleQ!=null?activeTargetNotes(MELODY,sampleQ):[];
   let diff=null;
