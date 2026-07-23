@@ -2594,7 +2594,7 @@ async function micToggle(){
 /* захват через AudioWorklet (стабильные ~46 оценок/с), адаптивное окно, сглаживание с гистерезисом */
 const CAP_CODE=`class Cap extends AudioWorkletProcessor{
 constructor(){super();this.b=new Float32Array(1024);this.n=0;}
-process(inp){const c=inp[0]&&inp[0][0];if(c){let i=0;while(i<c.length){const k=Math.min(1024-this.n,c.length-i);this.b.set(c.subarray(i,i+k),this.n);this.n+=k;i+=k;if(this.n===1024){this.port.postMessage(this.b.slice(0));this.n=0;}}}return true;}}
+process(inp){const c=inp[0]&&inp[0][0];if(c){let i=0;while(i<c.length){const k=Math.min(1024-this.n,c.length-i);this.b.set(c.subarray(i,i+k),this.n);this.n+=k;i+=k;if(this.n===1024){const samples=this.b.slice(0);this.port.postMessage({samples,endFrame:currentFrame+i},[samples.buffer]);this.n=0;}}}return true;}}
 registerProcessor('vacap',Cap);`;
 let capModuleP=null, capNode=null, capMute=null, workletMode=false;
 const RING=8192;
@@ -2622,10 +2622,11 @@ function smoothPitch(mf){
   } else {pendMf=mf; pendN=1;}
   return trk;
 }
-function onMicChunk(ch){
+function onMicChunk(message){
+  const ch=message.samples;
   for(let i=0;i<ch.length;i++){ring[ringW]=ch[i]; ringW=(ringW+1)%RING;}
   ringFilled=Math.min(RING,ringFilled+ch.length);
-  detectTick();
+  detectTick(message.endFrame/ac.sampleRate);
 }
 function lastWindow(n){
   if(ringFilled<n) return null;
@@ -2634,25 +2635,32 @@ function lastWindow(n){
   else{const k=RING-start; out.set(ring.subarray(start)); out.set(ring.subarray(0,n-k),k);}
   return out;
 }
-function detectTick(){
+function detectTick(captureEndTime){
   let n=(lastF>0&&lastF<160)?4096:2048; // низким нотам — длинное окно
   let buf=lastWindow(n);
   if(!buf&&n===4096) buf=lastWindow(n=2048);
   if(!buf) return;
   let f=pitchAny(buf);
-  if(!f&&n===2048){const b=lastWindow(4096); if(b){const f4=pitchAny(b); if(f4) f=f4;}}
+  if(!f&&n===2048){
+    const b=lastWindow(4096);
+    if(b){const f4=pitchAny(b);if(f4){f=f4;buf=b;n=4096;}}
+  }
   if(f) lastF=f;
-  processPitch(f);
+  const timing=micWindowTiming(captureEndTime,n);
+  processPitch(f,timing);
   // MPM обновляет индикатор сразу; SwiftF0 только уточняет свежий результат параллельно.
   if(enginePref==='swift'&&sfeState==='ready'&&!sfeBusy){
     const nn=Math.min(ringFilled,4096);
     if(nn<3072) return;
     const b=lastWindow(nn);
     if(!b) return;
-    const started=performance.now();
+    const swiftTiming=micWindowTiming(captureEndTime,nn);
+    const requestRevision=swiftTiming.revision;
     sfeBusy=true;
     sfeDetect(b).then(sf=>{
-      if(micOn&&enginePref==='swift'&&sf>0&&performance.now()-started<=120) processPitch(sf,false);
+      const ageMs=(ac.currentTime-swiftTiming.analysisTime)*1000;
+      if(micOn&&enginePref==='swift'&&sf>0&&requestRevision===micTimelineRevision)
+        processPitch(sf,swiftTiming,{countScore:false,updateLive:ageMs<=120});
     }).catch(()=>{}).finally(()=>{sfeBusy=false;});
   }
 }
@@ -2692,7 +2700,7 @@ function micLoop(){
   if(!micOn) return;
   if(!workletMode&&analyser){ // совместимый режим без AudioWorklet
     analyser.getFloatTimeDomainData(micBuf);
-    processPitch(pitchAny(micBuf));
+    processPitch(pitchAny(micBuf),micWindowTiming(ac.currentTime,micBuf.length));
   }
   drawPitch();
   if(hView&&!playing) drawHView(startQ);
