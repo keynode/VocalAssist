@@ -183,12 +183,13 @@ html[lang="en"] .breath::after{content:"breath"}
 .grp.step button{padding:5px 12px;font-size:15px;line-height:1}
 .grp.step .val{min-width:30px;text-align:center;color:var(--flame);font-weight:600}
 
-.nowbox{position:absolute;top:10px;left:10px;z-index:5;display:flex;align-items:center;gap:12px;
-  background:#12162acc;border:1px solid var(--line);border-radius:12px;padding:8px 14px;backdrop-filter:blur(6px)}
-.nowbox .cur{font-family:"Unbounded",sans-serif;font-weight:700;font-size:26px;color:var(--flame);line-height:1}
-.nowbox .cur small{display:block;font-family:"Golos Text",sans-serif;font-weight:400;font-size:11px;color:var(--muted);margin-top:3px}
-.nowbox .nxt{font-size:13px;color:var(--muted);border-left:1px solid var(--line);padding-left:12px}
-.nowbox .nxt b{color:var(--air);font-weight:600}
+.nowbox{position:absolute;top:10px;left:10px;z-index:5;display:grid;gap:3px;
+  background:#12162acc;border:1px solid var(--line);border-radius:12px;padding:8px 12px;backdrop-filter:blur(6px)}
+.note-status-row{display:grid;grid-template-columns:54px 64px 44px;align-items:baseline;min-height:18px}
+.note-status-label{color:var(--muted);font-size:11px;white-space:nowrap}
+.note-status-note{min-width:64px;font-size:14px;font-weight:650;color:var(--air);white-space:nowrap}
+.note-status-row.current .note-status-note{font-family:"Unbounded",sans-serif;font-size:16px;color:var(--flame)}
+.note-status-cents{min-width:44px;text-align:right;color:var(--muted);font-size:11px;white-space:nowrap}
 
 /* ---------- keyboard ---------- */
 .keys{position:relative;height:140px;user-select:none}
@@ -222,9 +223,8 @@ html[lang="en"] .breath::after{content:"breath"}
 #pc{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
 #fx{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
 #hv{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
-.sung b{color:var(--good)}
-.sung.off b{color:var(--bad)}
-.sung #sungCents{color:var(--muted);font-size:11px}
+.sung .note-status-note{color:var(--good)}
+.sung.off .note-status-note{color:var(--bad)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);
   background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:10px 18px;
   border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90vw}
@@ -321,9 +321,11 @@ html[lang="en"] .breath::after{content:"breath"}
   .song-btn .song-word,.song-btn #songCount,.song-btn #curSongLine{display:none}
   .sounds-btn .sounds-word{display:none}
   .keys{height:92px}
-  .nowbox{padding:5px 9px;gap:8px}
-  .nowbox .cur{font-size:18px}
-  .nowbox .cur small{font-size:10px}
+  .nowbox{padding:5px 8px}
+  .note-status-row{grid-template-columns:48px 58px 38px;min-height:17px}
+  .note-status-row.current .note-status-note{font-size:14px}
+  .note-status-note{min-width:58px;font-size:12px}
+  .note-status-cents{min-width:38px;font-size:10px}
   #lyrics{font-size:13px;bottom:60px;max-height:6.2em;padding:6px 10px}
   input[type=range]{width:90px}
 }
@@ -445,9 +447,19 @@ html[lang="en"] .breath::after{content:"breath"}
 
   <div class="roll" id="roll">
     <div class="nowbox">
-      <div class="cur"><span id="curNN">—</span><small id="curSub" data-i18n="curnote">текущая нота</small></div>
-      <div class="nxt"><span data-i18n="next">дальше</span><br><b id="nextNN">—</b></div>
-      <div class="nxt sung" id="sungBox" style="display:none"><span data-i18n="sing">пою</span><br><b id="sungNN">—</b> <span id="sungCents"></span></div>
+      <div class="note-status-row current">
+        <span class="note-status-label" data-i18n="now">сейчас:</span>
+        <b class="note-status-note" id="curNN">—</b>
+      </div>
+      <div class="note-status-row">
+        <span class="note-status-label" data-i18n="next">дальше</span>
+        <b class="note-status-note" id="nextNN">—</b>
+      </div>
+      <div class="note-status-row sung" id="sungBox" style="display:none">
+        <span class="note-status-label" data-i18n="sing">пою</span>
+        <b class="note-status-note" id="sungNN">—</b>
+        <span class="note-status-cents" id="sungCents"></span>
+      </div>
     </div>
     <div class="nowline"></div>
     <canvas id="fx"></canvas>
@@ -1158,7 +1170,7 @@ function setPos(q){
 }
 function reset(){cancelAnimationFrame(raf);playing=false;stopSound();
   hqPlayback=false;updatePlayButton();setPos(0);if(midiAudioNeedReload)prepareMidiAudio(true);
-  $('curNN').textContent='—';$('curSub').textContent=t('curnote');$('nextNN').textContent='—';}
+  $('curNN').textContent='—';$('nextNN').textContent='—';}
 
 const LOOK=4;
 // пул горизонтальных линий долей/тактов (создаются один раз, до нот — чтобы быть под ними)
@@ -1210,8 +1222,7 @@ function updNoteBox(q){
   const cur=curNotesG[0]||null;
   let next=null;
   for(const note of MELODY) if(note[0]>q){next=note;break;}
-  $('curNN').textContent=cur?noteName(cur[2]):'—';
-  $('curSub').textContent=cur?noteFull(cur[2]):t('curnote');
+  $('curNN').textContent=cur?noteFull(cur[2]):'—';
   $('nextNN').textContent=next?noteFull(next[2]):'—';
 }
 let loopP=0;
