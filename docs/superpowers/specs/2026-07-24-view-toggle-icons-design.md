@@ -4,7 +4,8 @@
 
 Make the microphone, waterfall, and contour controls easy to reach without
 using valuable settings space. Clarify the settings label for the control that
-shifts the vocal melody by whole octaves.
+shifts the vocal melody by whole octaves, and make karaoke lyrics easier to
+read.
 
 ## Chosen Interface
 
@@ -57,6 +58,12 @@ At narrow widths, the same icon-only presentation is retained. The buttons may
 reduce slightly with the existing smallest breakpoint but remain larger than
 the previous microphone icon.
 
+The karaoke lyric overlay uses a responsive `17px` to `20px` font on wider
+screens and `16px` on narrow screens, replacing the current `15px` and `13px`
+sizes. Its syllable-fill backgrounds, current/done/soon colors, held-note
+dashes, bouncing ball, text shadows, positioning, and update logic remain
+unchanged.
+
 ## Behavior and State
 
 Existing behavior remains authoritative:
@@ -87,6 +94,8 @@ Automated source checks cover:
 - the clearer Russian and English melody-height labels;
 - localized semantic settings sections;
 - removal of the repeat button and `L` shortcut;
+- larger desktop and narrow-screen lyric font sizes;
+- unchanged lyric effect selectors and update logic;
 - unchanged waterfall drawing code.
 
 The complete Node test suite and module-aware inline-script syntax checks must
@@ -109,3 +118,4 @@ The grouped, top-only option is therefore selected.
 - Changing waterfall or contour rendering.
 - Changing microphone capture or detection.
 - Changing the octave-shift behavior or stored preference format.
+- Changing lyric timing, effects, colors, or animation.
