@@ -65,6 +65,10 @@ button.tgl.on{background:#33241457;border-color:var(--ember);color:var(--ember)}
 .grp button{border:none;background:transparent;padding:7px 12px}
 .grp .num{min-width:56px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
 .grp .num b{color:var(--flame)}
+.view-toggles{display:flex;gap:2px;align-items:center;background:var(--panel2);
+  border:1px solid var(--line);border-radius:999px;padding:3px}
+.view-toggle{width:42px;height:42px;padding:0;display:grid;place-items:center;
+  border:none;border-radius:999px;background:transparent;font-size:19px}
 .spacer{flex:1}
 
 .settings{display:flex;gap:14px 20px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}
@@ -231,7 +235,7 @@ html[lang="en"] .breath::after{content:"breath"}
 .toast.show{opacity:1;transform:translateX(-50%)}
 
 #lyrics{position:absolute;left:8px;right:8px;bottom:64px;z-index:5;pointer-events:none;
-  text-align:center;font-size:15px;line-height:1.6;color:#b6bcd4;
+  text-align:center;font-size:clamp(17px,1.3vw,20px);line-height:1.6;color:#b6bcd4;
   background:#0d102047;border-radius:12px;padding:10px 14px;
   text-shadow:0 1px 2px #000e,0 0 6px #000b;
   max-height:7.6em;overflow:hidden}
@@ -270,10 +274,17 @@ html[lang="en"] .breath::after{content:"breath"}
 .more-head strong{font-family:"Unbounded",sans-serif;font-size:13px;font-weight:500}
 .more-body{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:11px}
 .more-body[hidden]{display:none}
-.more-body>.settings{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.more-body>.settings>.slider{grid-column:1/-1;justify-content:space-between;min-width:0}
-.more-body>.settings>.slider input[type=range]{flex:1;width:auto;min-width:80px}
-.more-body>.settings>button{min-width:0;padding:8px 9px;overflow:hidden;text-overflow:ellipsis}
+.more-body>.settings{width:100%;display:flex;flex-direction:column;gap:10px}
+.settings-group{display:grid;gap:8px;padding:9px;background:#0c1020aa;
+  border:1px solid var(--line);border-radius:11px}
+.settings-group h3{margin:0;color:var(--muted);font-size:10px;font-weight:650;
+  letter-spacing:.08em;text-transform:uppercase}
+.settings-group-body{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.settings-group-body>.slider{grid-column:1/-1;justify-content:space-between;min-width:0}
+.settings-group-body>.slider input[type=range]{flex:1;width:auto;min-width:80px}
+.settings-group-body>button{min-width:0;padding:8px 9px;overflow:hidden;text-overflow:ellipsis}
+.settings-wide{grid-column:1/-1}
+.settings-action-wide{grid-column:span 2}
 .mic-sync{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;
   align-items:center;padding-top:9px;border-top:1px solid var(--line)}
 .mic-sync-head{display:flex;min-width:0;justify-content:space-between;gap:10px;font-size:12px;color:var(--txt)}
@@ -309,10 +320,10 @@ html[lang="en"] .breath::after{content:"breath"}
   button{padding:8px 11px;font-size:13px}
   button.primary{padding:9px 16px;font-size:14px}
   .bar{gap:4px}
-  .bar>.primary,#restart,#micBtn,.song-btn,.sounds-btn,#moreBtn{width:38px;height:38px;padding:0;display:grid;place-items:center}
-  .bar>.primary,#micBtn{font-size:0}
+  .bar>.primary,#restart,.song-btn,.sounds-btn,#moreBtn{width:38px;height:38px;padding:0;display:grid;place-items:center}
+  .bar>.primary{font-size:0}
   .bar>.primary::before{content:attr(data-icon);font-size:16px}
-  #micBtn::before{content:"🎙";font-size:16px}
+  .view-toggle{width:40px;height:40px;font-size:18px}
   .bar>.grp{gap:0}
   .bar>.grp button{padding:7px 9px}
   .bar>.grp .num{min-width:30px}
@@ -326,13 +337,17 @@ html[lang="en"] .breath::after{content:"breath"}
   .note-status-row.current .note-status-note{font-size:14px}
   .note-status-note{min-width:58px;font-size:12px}
   .note-status-cents{min-width:38px;font-size:10px}
-  #lyrics{font-size:13px;bottom:60px;max-height:6.2em;padding:6px 10px}
+  #lyrics{font-size:16px;bottom:60px;max-height:6.2em;padding:6px 10px}
   input[type=range]{width:90px}
 }
 @media (max-width:360px){
-  .bar>.primary,#restart,#micBtn,.song-btn,.sounds-btn,#moreBtn{width:34px;height:36px}
-  .bar>.grp button{padding:7px 7px}
-  .bar>.grp .num{min-width:26px}
+  .bar{gap:3px}
+  .bar>.primary,#restart,.song-btn,.sounds-btn,#moreBtn{width:34px;height:36px}
+  #restart{display:none}
+  .view-toggles{gap:0;padding:0}
+  .view-toggle{width:36px;height:36px}
+  .bar>.grp button{padding:7px 5px}
+  .bar>.grp .num{min-width:22px}
   .mic-sync-adjust{grid-template-columns:1fr auto auto}
   .mic-sync-adjust>span{grid-column:1/-1}
 }
@@ -359,7 +374,11 @@ html[lang="en"] .breath::after{content:"breath"}
       <div class="num"><span data-i18n="phrase">фраза</span> <b id="phNum2">1</b></div>
       <button id="phNext" title="→">⟩</button>
     </div>
-    <button id="micBtn" class="tgl" data-i18n="mic">🎙 микрофон</button>
+    <div id="viewToggles" class="view-toggles" role="group">
+      <button id="micBtn" class="tgl view-toggle" type="button"><span aria-hidden="true">🎙</span></button>
+      <button id="wfBtn" class="tgl view-toggle on" type="button"><span aria-hidden="true">⬇</span></button>
+      <button id="hvBtn" class="tgl view-toggle" type="button"><span aria-hidden="true">📈</span></button>
+    </div>
     <button id="songsBtn" class="song-btn" title="Песни">
       <span aria-hidden="true">🎵</span>
       <span class="song-word" data-i18n="songsWord">Песни</span>
@@ -379,46 +398,64 @@ html[lang="en"] .breath::after{content:"breath"}
         <button id="moreClose" class="icon-btn" title="Закрыть">✕</button>
       </div>
       <div class="more-body" id="settingsMain">
-        <button id="phLoop" class="tgl" data-i18n="repeat">🔁 повтор</button>
-        <button id="legato" class="tgl on" data-i18n="legato">легато</button>
-        <button id="wfBtn" class="tgl on" data-i18n="wf">⬇ водопад</button>
-        <button id="hvBtn" class="tgl" data-i18n="hv">📈 контур</button>
-        <button id="lyrBtn" class="tgl on" data-i18n="lyr" style="display:none">📝 текст</button>
-        <button id="fileBtn" data-i18n="files">📂 ноты</button>
         <div class="settings">
-          <div class="slider"><span data-i18n="tempo">Темп</span> <input id="tempo" type="range" min="40" max="220" value="100"><span class="val" id="tempoVal">100</span></div>
-          <div class="slider"><span data-i18n="key">Тон</span>
-            <span class="grp step">
-              <button id="trDown" title="−1">−</button>
-              <span class="val" id="transpVal">0</span>
-              <button id="trUp" title="+1">+</button>
-            </span>
-          </div>
-          <div class="slider"><span data-i18n="voct">Октава</span>
-            <span class="grp step">
-              <button id="ocDown" title="−1">−</button>
-              <span class="val" id="voctVal">0</span>
-              <button id="ocUp" title="+1">+</button>
-            </span>
-          </div>
-          <div class="slider">🎤 <input id="vol" type="range" min="0" max="100" value="60"></div>
-          <div class="slider">🎹 <input id="accVol" type="range" min="0" max="100" value="45"></div>
-          <button id="engBtn" title="Детектор высоты: SwiftF0 (нейросеть) / MPM (классика)">🧠 SwiftF0</button>
-          <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
-          <button id="langBtn" title="Language">🌐 RU</button>
-          <div class="mic-sync">
-            <div class="mic-sync-head">
-              <span data-i18n="micSync">Синхронизация микрофона</span>
-              <span id="micSyncAuto">Авто</span>
+          <section class="settings-group">
+            <h3 data-i18n="settingsMelody">Мелодия</h3>
+            <div class="settings-group-body">
+              <button id="legato" class="tgl on" data-i18n="legato">легато</button>
+              <button id="fileBtn" class="settings-action-wide" data-i18n="files">📂 ноты</button>
+              <div class="slider"><span data-i18n="tempo">Темп</span> <input id="tempo" type="range" min="40" max="220" value="100"><span class="val" id="tempoVal">100</span></div>
+              <div class="slider"><span data-i18n="key">Тон</span>
+                <span class="grp step">
+                  <button id="trDown" title="−1">−</button>
+                  <span class="val" id="transpVal">0</span>
+                  <button id="trUp" title="+1">+</button>
+                </span>
+              </div>
+              <div class="slider"><span data-i18n="voct">Высота мелодии</span>
+                <span class="grp step">
+                  <button id="ocDown" title="−1">−</button>
+                  <span class="val" id="voctVal">0</span>
+                  <button id="ocUp" title="+1">+</button>
+                </span>
+              </div>
+              <button id="midiTracksBtn" class="midi-tracks-entry settings-wide" aria-controls="midiTracksView" hidden>🎼 MIDI-дорожки · Авто</button>
             </div>
-            <div class="mic-sync-adjust">
-              <span id="micSyncFineLabel" data-i18n="micSyncFine">Доп. поправка</span>
-              <input id="micSyncFine" type="range" min="-250" max="400" step="5" value="0" aria-labelledby="micSyncFineLabel">
-              <output id="micSyncFineVal">0 мс</output>
-              <button id="micSyncReset" type="button" data-i18n="micSyncReset">Сбросить</button>
+          </section>
+          <section class="settings-group">
+            <h3 data-i18n="settingsAudio">Звук и микрофон</h3>
+            <div class="settings-group-body">
+              <div class="slider">
+                <span><span aria-hidden="true">🎤</span> <span data-i18n="guideVolume">Мелодия</span></span>
+                <input id="vol" type="range" min="0" max="100" value="60">
+              </div>
+              <div class="slider">
+                <span><span aria-hidden="true">🎹</span> <span data-i18n="accompanimentVolume">Аккомпанемент</span></span>
+                <input id="accVol" type="range" min="0" max="100" value="45">
+              </div>
+              <button id="engBtn" class="settings-wide" title="Детектор высоты: SwiftF0 (нейросеть) / MPM (классика)">🧠 SwiftF0</button>
+              <div class="mic-sync">
+                <div class="mic-sync-head">
+                  <span data-i18n="micSync">Синхронизация микрофона</span>
+                  <span id="micSyncAuto">Авто</span>
+                </div>
+                <div class="mic-sync-adjust">
+                  <span id="micSyncFineLabel" data-i18n="micSyncFine">Доп. поправка</span>
+                  <input id="micSyncFine" type="range" min="-250" max="400" step="5" value="0" aria-labelledby="micSyncFineLabel">
+                  <output id="micSyncFineVal">0 мс</output>
+                  <button id="micSyncReset" type="button" data-i18n="micSyncReset">Сбросить</button>
+                </div>
+              </div>
             </div>
-          </div>
-          <button id="midiTracksBtn" class="midi-tracks-entry" aria-controls="midiTracksView" hidden>🎼 MIDI-дорожки · Авто</button>
+          </section>
+          <section class="settings-group">
+            <h3 data-i18n="settingsInterface">Интерфейс</h3>
+            <div class="settings-group-body">
+              <button id="lyrBtn" class="tgl on" data-i18n="lyr" style="display:none">📝 текст</button>
+              <button id="noteBtn" title="C-D-E / До-Ре-Ми">До-Ре-Ми</button>
+              <button id="langBtn" title="Language">🌐 RU</button>
+            </div>
+          </section>
         </div>
         <details class="help-details" id="helpDetails">
           <summary data-i18n="help">❔ Справка</summary>
@@ -534,8 +571,8 @@ let noteStyle=localStorage.getItem('vocalassist.notes')||'solfege'; // 'solfege'
 const T={
 ru:{
   subtitle:'вокальный тренажёр', play:'▶ Петь', pause:'⏸ Пауза', phrase:'фраза',
-  repeat:'🔁 повтор', legato:'легато', mic:'🎙 микрофон', wf:'⬇ водопад', hv:'📈 контур',
-  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', soundsWord:'Звуки', soundsTitle:'Библиотека звуков', settings:'Настройки', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Октава', range:'диапазон:',
+  legato:'легато', mic:'Микрофон', wf:'Водопад', hv:'Контур', views:'Визуализация',
+  files:'📂 ноты', lyr:'📝 текст', songsWord:'Песни', soundsWord:'Звуки', soundsTitle:'Библиотека звуков', settings:'Настройки', settingsMelody:'Мелодия', settingsAudio:'Звук и микрофон', settingsInterface:'Интерфейс', close:'Закрыть', help:'❔ Справка', now:'сейчас:', tempo:'Темп', key:'Тон', voct:'Высота мелодии', guideVolume:'Мелодия', accompanimentVolume:'Аккомпанемент', range:'диапазон:',
   micSync:'Синхронизация микрофона', micSyncAuto:'Авто', micSyncFine:'Доп. поправка', micSyncReset:'Сбросить', milliseconds:'мс',
   curnote:'текущая нота', next:'дальше', sing:'пою',
   search:'поиск по названию…', openfile:'📂 открыть файл…',
@@ -569,12 +606,12 @@ ru:{
   micPitchy:'Микрофон включён · детектор Pitchy', micBasic:'Микрофон включён · встроенный детектор',
   micDenied:'нет разрешения', micUnavail:'Микрофон недоступен', micNoHttps:'Микрофон работает только по HTTPS — открой страницу с https-адреса',
   micUnsup:'Браузер не поддерживает микрофон',
-  footerHtml:'Воспроизведение начинается сразу — вступай, когда загорится первая клавиша. Голубой пунктир — вдох. «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. Кнопки «Тон −/+» транспонируют всё на полутон за шаг. «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту, зелёный = попал, 🎯 — процент попаданий. &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>L</kbd> повтор фразы · <kbd>R</kbd> сначала'
+  footerHtml:'Воспроизведение начинается сразу — вступай, когда загорится первая клавиша. Голубой пунктир — вдох. «🎤» на нуле — минусовка: остаётся аккомпанемент и подсветка. Кнопки «Тон −/+» транспонируют всё на полутон за шаг. «📂 ноты» открывает файлы .mxl, .musicxml и .mid (MIDI). С «🎙 микрофоном» пой в наушниках — луч на рулоне показывает твою ноту, зелёный = попал, 🎯 — процент попаданий. &nbsp;·&nbsp; <kbd>Пробел</kbd> петь/пауза · <kbd>←</kbd><kbd>→</kbd> фразы · <kbd>R</kbd> сначала'
 },
 en:{
   subtitle:'vocal trainer', play:'▶ Sing', pause:'⏸ Pause', phrase:'phrase',
-  repeat:'🔁 repeat', legato:'legato', mic:'🎙 microphone', wf:'⬇ waterfall', hv:'📈 contour',
-  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', soundsWord:'Sounds', soundsTitle:'Sound library', settings:'Settings', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Octave', range:'range:',
+  legato:'legato', mic:'Microphone', wf:'Waterfall', hv:'Contour', views:'Visualization',
+  files:'📂 files', lyr:'📝 lyrics', songsWord:'Songs', soundsWord:'Sounds', soundsTitle:'Sound library', settings:'Settings', settingsMelody:'Melody', settingsAudio:'Sound & microphone', settingsInterface:'Interface', close:'Close', help:'❔ Help', now:'now:', tempo:'Tempo', key:'Key', voct:'Melody pitch', guideVolume:'Melody', accompanimentVolume:'Accompaniment', range:'range:',
   micSync:'Microphone sync', micSyncAuto:'Auto', micSyncFine:'Fine adjustment', micSyncReset:'Reset', milliseconds:'ms',
   curnote:'current note', next:'next', sing:'singing',
   search:'search by title…', openfile:'📂 open file…',
@@ -608,7 +645,7 @@ en:{
   micPitchy:'Microphone on · Pitchy detector', micBasic:'Microphone on · built-in detector',
   micDenied:'permission denied', micUnavail:'Microphone unavailable', micNoHttps:'Microphone needs HTTPS — open the https:// address',
   micUnsup:'This browser does not support microphone input',
-  footerHtml:'Playback starts immediately — come in when the first key lights up. Blue dashes mark breaths. Set “🎤” to zero for a backing track: accompaniment and highlights stay. “Key −/+” transposes everything by a semitone per step. “📂 files” opens .mxl, .musicxml and .mid (MIDI). With “🎙 microphone” sing in headphones — the beam shows your note, green = on pitch, 🎯 — hit percentage. &nbsp;·&nbsp; <kbd>Space</kbd> sing/pause · <kbd>←</kbd><kbd>→</kbd> phrases · <kbd>L</kbd> loop phrase · <kbd>R</kbd> restart'
+  footerHtml:'Playback starts immediately — come in when the first key lights up. Blue dashes mark breaths. Set “🎤” to zero for a backing track: accompaniment and highlights stay. “Key −/+” transposes everything by a semitone per step. “📂 files” opens .mxl, .musicxml and .mid (MIDI). With “🎙 microphone” sing in headphones — the beam shows your note, green = on pitch, 🎯 — hit percentage. &nbsp;·&nbsp; <kbd>Space</kbd> sing/pause · <kbd>←</kbd><kbd>→</kbd> phrases · <kbd>R</kbd> restart'
 }};
 const t=k=>(T[LANG]&&T[LANG][k])||T.ru[k]||k;
 const octOf=m=>Math.floor(m/12)-1;
@@ -636,7 +673,13 @@ function applyLang(){
   $('songSearch').placeholder=t('search');
   $('helpText').innerHTML=t('footerHtml');
   updatePlayButton();
+  $('viewToggles').setAttribute('aria-label',t('views'));
+  $('micBtn').title=t('mic');
   $('micBtn').setAttribute('aria-label',t('mic'));
+  $('wfBtn').title=t('wf');
+  $('wfBtn').setAttribute('aria-label',t('wf'));
+  $('hvBtn').title=t('hv');
+  $('hvBtn').setAttribute('aria-label',t('hv'));
   $('soundsBtn').title=t('soundsTitle');
   $('soundsBtn').setAttribute('aria-label',t('soundsTitle'));
   $('soundsClose').title=t('close');
@@ -1137,7 +1180,7 @@ function beginHighQualityMidi(q){
   return true;
 }
 /* ---- transport ---- */
-let bpm=100, playing=false, startAcTime=0, startQ=0, curIdx=0, accIdx=0, raf=0, loopPhrase=false;
+let bpm=100, playing=false, startAcTime=0, startQ=0, curIdx=0, accIdx=0, raf=0;
 const active=new Map();
 function qPerSec(){return bpm/60;}
 function fmt(s){s=Math.max(0,s|0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
@@ -1225,7 +1268,6 @@ function updNoteBox(q){
   $('curNN').textContent=cur?noteFull(cur[2]):'—';
   $('nextNN').textContent=next?noteFull(next[2]):'—';
 }
-let loopP=0;
 function tick(){
   const q=nowQ();
   if(hqPlayback)midiAudioEngine.schedule({currentQ:q,lookAheadQ:qPerSec()*0.12,qPerSec:qPerSec(),contextStart:startAcTime,startQ});
@@ -1245,7 +1287,6 @@ function tick(){
   render(q); drawFx(performance.now());
   if(hView) drawHView(q);
   updNoteBox(q); updHud(q); updateLyrics(q);
-  if(loopPhrase&&q>=phraseEnd(loopP)-0.02){jumpTo(PHR[loopP]);raf=requestAnimationFrame(tick);return;}
   if(q>totalQ+1){reset();return;}
   raf=requestAnimationFrame(tick);
 }
@@ -1286,7 +1327,7 @@ function tlSeek(e){
   const r=tl.getBoundingClientRect();
   const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
   const q=Math.min(totalQ,Math.max(0,x/r.width*totalQ));
-  loopP=phraseAt(q); jumpTo(q);
+  jumpTo(q);
 }
 tl.addEventListener('pointerdown',e=>{tlSeek(e);
   const mv=ev=>tlSeek(ev), up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);};
@@ -1342,14 +1383,10 @@ $('vol').oninput=e=>{if(voxGain)voxGain.gain.value=e.target.value/100;if(midiAud
 $('accVol').oninput=e=>{if(accGain)accGain.gain.value=e.target.value/100;if(midiAudioEngine)midiAudioEngine.setVolumes($('vol').value/100,e.target.value/100);UI.accVol=+e.target.value;saveUI();};
 function phraseStep(dir){
   const p=Math.min(PHR.length-1,Math.max(0,phraseAt(playing?nowQ():startQ)+dir));
-  loopP=p; jumpTo(PHR[p]);
+  jumpTo(PHR[p]);
 }
 $('phPrev').onclick=()=>phraseStep(-1);
 $('phNext').onclick=()=>phraseStep(1);
-$('phLoop').onclick=e=>{
-  loopPhrase=!loopPhrase;e.currentTarget.classList.toggle('on',loopPhrase);
-  loopP=phraseAt(playing?nowQ():startQ);
-};
 $('legato').onclick=e=>{
   legatoOn=!legatoOn;e.currentTarget.classList.toggle('on',legatoOn);
   bumpMicTimeline();
@@ -2060,7 +2097,6 @@ function applyMidiTrackSelection(nextKeys){
   rebuild();
   updDur();
   const boundedQ=Math.min(wasPlaying?Math.max(nowQ(),q):q,totalQ);
-  loopP=phraseAt(boundedQ);
   if(wasPlaying){
     if(hqPlayback)midiAudioEngine.updateSelection({selectedKeys:keys||[CURRENT_SONG.midiAutoKey],melody:MELODY,q:boundedQ,qPerSec:qPerSec()});
     startQ=boundedQ; startAcTime=ac.currentTime;
@@ -2109,7 +2145,7 @@ function applySong(s){
   LYR=s.lyr||[];
   buildLyrics();
   MELODY=buildMelody();
-  loopP=0; buildTicks(); rebuild(); reset(); updDur();
+  buildTicks(); rebuild(); reset(); updDur();
   LIB.last=curSongId; saveLibDebounced();
   if(typeof renderMidiTrackControls==='function') renderMidiTrackControls();
   renderShelf();
@@ -2883,7 +2919,6 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Space'){e.preventDefault();if(e.target.tagName==='BUTTON')e.target.blur();playing?pause():play();}
   else if(e.code==='ArrowLeft'){e.preventDefault();phraseStep(-1);}
   else if(e.code==='ArrowRight'){e.preventDefault();phraseStep(1);}
-  else if(e.code==='KeyL'){$('phLoop').click();}
   else if(e.code==='KeyR'){initAudio();reset();}
 });
 

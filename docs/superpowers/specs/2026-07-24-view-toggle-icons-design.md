@@ -56,7 +56,9 @@ used by the song control.
 
 At narrow widths, the same icon-only presentation is retained. The buttons may
 reduce slightly with the existing smallest breakpoint but remain larger than
-the previous microphone icon.
+the previous microphone icon. At `360px` and below the redundant Restart button
+is hidden to prevent control-bar overflow; the `R` keyboard shortcut remains
+available.
 
 The karaoke lyric overlay uses a responsive `17px` to `20px` font on wider
 screens and `16px` on narrow screens, replacing the current `15px` and `13px`

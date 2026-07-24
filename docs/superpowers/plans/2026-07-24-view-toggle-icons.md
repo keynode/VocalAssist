@@ -57,6 +57,10 @@ for (const id of ['micBtn', 'wfBtn', 'hvBtn']) {
 assert(!settingsHtml.includes('id="wfBtn"'));
 assert(!settingsHtml.includes('id="hvBtn"'));
 assert(/\.view-toggle\s*\{[^}]*width\s*:\s*42px[^}]*height\s*:\s*42px/.test(style));
+assert(
+  /@media\s*\(max-width:360px\)[\s\S]*?#restart\s*\{[^}]*display\s*:\s*none/.test(style),
+  'the smallest layout must hide restart instead of overflowing the control bar',
+);
 
 for (const id of ['settingsMelody', 'settingsAudio', 'settingsInterface']) {
   assert(settingsHtml.includes(`data-i18n="${id}"`), `${id} heading must exist`);
@@ -126,7 +130,10 @@ Add beside the existing `.grp` styles:
 ```
 
 Update the narrow breakpoint so `.view-toggle` remains icon-only and uses
-`40px` square buttons, with `36px` square buttons only below `360px`.
+`40px` square buttons, with `36px` square buttons only below `360px`. At that
+smallest breakpoint hide `#restart`, keep its `R` keyboard shortcut, remove
+padding from `.view-toggles`, and use a `3px` bar gap so the row does not
+overflow.
 
 - [ ] **Step 2: Move the three buttons into the top group**
 
